@@ -1,0 +1,35 @@
+name: hledger_tb
+
+services:
+  db:
+    image: postgres:alpine
+    restart: always
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  tb:
+    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.28
+    volumes:
+      - tb_data:/data
+    ports:
+      - 127.0.0.1:3001:3001
+    security_opt:
+      - seccomp:unconfined
+    healthcheck:
+      test: "netstat -an | grep 3001 > /dev/null; if [ 0 != $? ]; then exit 1; fi;"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    # command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
+    command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
+
+
+volumes:
+  app_registry:
+  db_data:
+  tb_data:

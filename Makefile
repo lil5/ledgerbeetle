@@ -1,0 +1,3 @@
+default:
+	@grep '^[^#[:space:].].*:' Makefile
+
