@@ -73,19 +73,31 @@ async fn create_account<'a>(
     unit: String,
 ) -> Result<Account, http_err::HttpErr> {
     let currency = find_or_create_currency(&conn, unit).await?;
-    conn.interact(move |conn| {
-        let new_account = NewAccount {
-            name: account_name.as_str(),
-            currencies_id: &currency.id,
-        };
-        diesel::insert_into(crate::schema::accounts::table)
-            .values(&new_account)
-            .returning(Account::as_returning())
-            .get_result(conn)
-            .map_err(http_err::internal_error)
-    })
-    .await
-    .map_err(http_err::internal_error)?
+    let account = conn
+        .interact(move |conn| {
+            let new_account = NewAccount {
+                name: account_name.as_str(),
+                currencies_id: &currency.id,
+            };
+            diesel::insert_into(crate::schema::accounts::table)
+                .values(&new_account)
+                .returning(Account::as_returning())
+                .get_result(conn)
+                .map_err(http_err::internal_error)
+        })
+        .await
+        .map_err(http_err::internal_error)??;
+
+    let new_tb_account = tb::Account::new(
+        account.tb_id.try_into().unwrap(),
+        currency.tb_ledger.try_into().unwrap(),
+        1,
+    );
+    tb.create_accounts(vec![new_tb_account])
+        .await
+        .map_err(http_err::internal_error)?;
+
+    Ok(account)
 }
 
 pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
