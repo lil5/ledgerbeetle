@@ -1,3 +1,4 @@
+use crate::http_err;
 use deadpool_diesel::postgres::Object;
 use diesel::{prelude::*, result::Error::NotFound};
 use regex::Regex;
@@ -6,8 +7,6 @@ use tigerbeetle_unofficial as tb;
 use validator::ValidationError;
 
 static RE_AMOUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)( ([A-Z]+))?$").unwrap());
-
-use crate::{bad_error, internal_error, HttpErr};
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::accounts)]
@@ -18,16 +17,16 @@ pub struct Account {
     pub tb_id: i64,
 }
 
-pub async fn list_all_accounts(conn: &Object) -> Result<Vec<String>, HttpErr> {
+pub async fn list_all_accounts(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
     use crate::schema::accounts::dsl::*;
     conn.interact(|conn| {
         return accounts
             .select(name)
             .load::<String>(conn)
-            .map_err(internal_error);
+            .map_err(http_err::internal_error);
     })
     .await
-    .map_err(internal_error)?
+    .map_err(http_err::internal_error)?
 }
 
 pub async fn find_or_create_account(
@@ -35,7 +34,7 @@ pub async fn find_or_create_account(
     tb: &Arc<tb::Client>,
     account_name: String,
     unit: String,
-) -> Result<Account, HttpErr> {
+) -> Result<Account, http_err::HttpErr> {
     use crate::schema::accounts::dsl::*;
 
     let account_name_clone = account_name.clone();
@@ -47,13 +46,13 @@ pub async fn find_or_create_account(
                 .first(conn);
         })
         .await
-        .map_err(internal_error)?;
+        .map_err(http_err::internal_error)?;
 
     match first_account {
         Ok(v) => Ok(v),
         Err(err) => {
             if err != NotFound {
-                return Err(internal_error(err));
+                return Err(http_err::internal_error(err));
             } else {
                 return create_account(&conn, &tb, account_name_clone, unit).await;
             }
@@ -72,7 +71,7 @@ async fn create_account<'a>(
     tb: &Arc<tb::Client>,
     account_name: String,
     unit: String,
-) -> Result<Account, HttpErr> {
+) -> Result<Account, http_err::HttpErr> {
     let currency = find_or_create_currency(&conn, unit).await?;
     conn.interact(move |conn| {
         let new_account = NewAccount {
@@ -83,14 +82,14 @@ async fn create_account<'a>(
             .values(&new_account)
             .returning(Account::as_returning())
             .get_result(conn)
-            .map_err(internal_error)
+            .map_err(http_err::internal_error)
     })
     .await
-    .map_err(internal_error)?
+    .map_err(http_err::internal_error)?
 }
 
-pub fn read_amount(a: &str) -> Result<(i64, String), HttpErr> {
-    let err = || bad_error(ValidationError::new("invalid amount"));
+pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
+    let err = || http_err::bad_error(ValidationError::new("invalid amount"));
     let m = RE_AMOUNT.captures(a).ok_or(err())?;
     let one = m.get(1).ok_or(err()).map(|v| v.as_str())?;
     let one = one.parse::<i64>().map_err(|_| err())?;
@@ -121,7 +120,10 @@ pub struct Currencies {
     pub unit: String,
 }
 
-async fn find_or_create_currency(conn: &Object, unit: String) -> Result<Currencies, HttpErr> {
+async fn find_or_create_currency(
+    conn: &Object,
+    unit: String,
+) -> Result<Currencies, http_err::HttpErr> {
     use crate::schema::currencies::dsl;
     let unit_clone = unit.clone();
     let first_currency = conn
@@ -132,13 +134,13 @@ async fn find_or_create_currency(conn: &Object, unit: String) -> Result<Currenci
                 .first(conn)
         })
         .await
-        .map_err(internal_error)?;
+        .map_err(http_err::internal_error)?;
 
     match first_currency {
         Ok(v) => Ok(v),
         Err(err) => {
             if err != NotFound {
-                Err(internal_error(err))
+                Err(http_err::internal_error(err))
             } else {
                 create_currency(&conn, unit_clone).await
             }
@@ -151,7 +153,7 @@ async fn find_or_create_currency(conn: &Object, unit: String) -> Result<Currenci
 pub struct NewCurrency<'a> {
     pub unit: &'a str,
 }
-async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, HttpErr> {
+async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, http_err::HttpErr> {
     conn.interact(move |conn| {
         let new_currency = NewCurrency {
             unit: unit.as_str(),
@@ -160,10 +162,10 @@ async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, Http
             .values(&new_currency)
             .returning(Currencies::as_returning())
             .get_result(conn)
-            .map_err(internal_error);
+            .map_err(http_err::internal_error);
     })
     .await
-    .map_err(internal_error)?
+    .map_err(http_err::internal_error)?
 }
 
 static ACCOUNT_TYPE_ALIAS: &str = "s";

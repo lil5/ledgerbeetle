@@ -13,7 +13,7 @@ static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d
 use crate::models::find_or_create_account;
 use crate::models::read_amount;
 use crate::models::Account;
-use crate::{internal_error, models, HttpErr};
+use crate::{http_err, models};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -23,8 +23,8 @@ pub struct AppState {
 
 pub async fn get_account_names(
     State(state): State<AppState>,
-) -> Result<Json<Vec<String>>, HttpErr> {
-    let conn = state.pool.get().await.map_err(internal_error)?;
+) -> Result<Json<Vec<String>>, http_err::HttpErr> {
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
     let accounts = models::list_all_accounts(&conn).await?;
 
@@ -53,16 +53,16 @@ pub struct PostAddRequest {
 pub async fn post_add(
     Json(payload): Json<PostAddRequest>,
     State(state): State<AppState>,
-) -> Result<Json<Vec<String>>, HttpErr> {
-    payload.validate().map_err(bad_error)?;
+) -> Result<Json<Vec<String>>, http_err::HttpErr> {
+    payload.validate().map_err(http_err::bad_error)?;
 
     if payload.account.len() != payload.amount.len() {
-        return Err(bad_error(ValidationError::new(
+        return Err(http_err::bad_error(ValidationError::new(
             "account must be the same length as amount",
         )));
     }
 
-    let conn = state.pool.get().await.map_err(internal_error)?;
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
     let mut payload_transfers: Vec<(Account, i64, String)> = Vec::new();
     for (i, account_name) in payload.account.iter().enumerate() {

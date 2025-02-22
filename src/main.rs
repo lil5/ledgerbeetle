@@ -6,7 +6,7 @@ mod schema;
 use axum::{routing::get, Router};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
-use hledger_tb::{internal_error, HttpErr};
+use hledger_tb::http_err;
 use tigerbeetle_unofficial as tb;
 extern crate clap;
 
