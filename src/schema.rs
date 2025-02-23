@@ -20,7 +20,7 @@ diesel::table! {
 diesel::table! {
     transfer_details (id) {
         id -> Int8,
-        tb_id -> Int8,
+        tb_id -> Text,
         description -> Text,
     }
 }

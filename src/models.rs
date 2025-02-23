@@ -1,6 +1,6 @@
 use crate::http_err;
 use deadpool_diesel::postgres::Object;
-use diesel::{prelude::*, result::Error::NotFound};
+use diesel::{insert_into, prelude::*, result::Error::NotFound};
 use regex::Regex;
 use std::sync::{Arc, LazyLock};
 use tigerbeetle_unofficial as tb;
@@ -34,7 +34,7 @@ pub async fn find_or_create_account(
     tb: &Arc<tb::Client>,
     account_name: String,
     unit: String,
-) -> Result<Account, http_err::HttpErr> {
+) -> Result<(Account, Currencies), http_err::HttpErr> {
     use crate::schema::accounts::dsl::*;
 
     let account_name_clone = account_name.clone();
@@ -49,7 +49,10 @@ pub async fn find_or_create_account(
         .map_err(http_err::internal_error)?;
 
     match first_account {
-        Ok(v) => Ok(v),
+        Ok(v) => {
+            let currency = create_currency(conn, unit).await?;
+            Ok((v, currency))
+        }
         Err(err) => {
             if err != NotFound {
                 return Err(http_err::internal_error(err));
@@ -71,7 +74,7 @@ async fn create_account<'a>(
     tb: &Arc<tb::Client>,
     account_name: String,
     unit: String,
-) -> Result<Account, http_err::HttpErr> {
+) -> Result<(Account, Currencies), http_err::HttpErr> {
     let currency = find_or_create_currency(&conn, unit).await?;
     let account = conn
         .interact(move |conn| {
@@ -97,7 +100,7 @@ async fn create_account<'a>(
         .await
         .map_err(http_err::internal_error)?;
 
-    Ok(account)
+    Ok((account, currency))
 }
 
 pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
@@ -119,10 +122,31 @@ pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct TransferDetail {
     pub id: i64,
-    pub tb_id: i64,
+    pub tb_id: String,
     pub description: String,
 }
 
+#[derive(Insertable)]
+#[diesel(table_name =  crate::schema::transfer_details)]
+pub struct NewTransferDetail {
+    pub tb_id: String,
+    pub description: String,
+}
+pub async fn create_transfer_details(
+    conn: &Object,
+    values: NewTransferDetail,
+) -> Result<(), http_err::HttpErr> {
+    use crate::schema::transfer_details::{dsl::*, table};
+
+    conn.interact(move |conn| {
+        insert_into(table)
+            .values(values)
+            .execute(conn)
+            .map_err(http_err::internal_error);
+    })
+    .await
+    .map_err(http_err::internal_error)
+}
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::currencies)]
 #[diesel(check_for_backend(diesel::pg::Pg))]

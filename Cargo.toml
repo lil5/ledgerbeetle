@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.96"
 axum = "0.8.1"
+chrono = "0.4.39"
 clap = "2"
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
 diesel = { version = "2", features = ["postgres"] }

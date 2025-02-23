@@ -3,7 +3,10 @@ mod models;
 mod routes;
 mod schema;
 
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post, put},
+    Router,
+};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 use hledger_tb::http_err;
@@ -50,6 +53,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(routes::get_index))
         .route("/accountnames", get(routes::get_account_names))
+        .route("/add", post(routes::post_add))
+        .route("/add", put(routes::post_add))
         .route("/version", get(routes::get_version))
         .with_state(app_state);
 
