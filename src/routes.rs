@@ -4,6 +4,7 @@ use chrono::DateTime;
 use deadpool_diesel::postgres::Pool;
 use regex::Regex;
 use serde::Deserialize;
+use std::ops::Neg;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tigerbeetle_unofficial as tb;
@@ -84,7 +85,7 @@ pub async fn post_add(
         payload_transfers.push((account, currency, found_amount.0, found_amount.1));
     }
 
-    let account_debit_per_unit: Vec<(i64, i32)> = payload_transfers
+    let payee_per_unit: Vec<(i64, i32)> = payload_transfers
         .iter()
         .filter_map(|v| {
             if v.2 == 0 {
@@ -103,23 +104,60 @@ pub async fn post_add(
     let user_data_128 = tb::id();
     let mut tb_transfers: Vec<tb::Transfer> = Vec::new();
 
-    for v in payload_transfers.iter().filter(|v| v.2 != 0) {
+    let postings = payload_transfers.iter().filter(|v| v.2 != 0);
+
+    // Chunk per tb_ledger then check that all amounts are all negative or positive
+    for postings_by_unit in postings
+        .clone()
+        .collect::<Vec<_>>()
+        .chunk_by(|a, b| a.1.tb_ledger == b.1.tb_ledger)
+    {
+        let mut is_negative: Option<bool> = None;
+        for posting_is_negative in postings_by_unit.iter().map(|v| v.2.is_negative()) {
+            match is_negative {
+                None => is_negative = Some(posting_is_negative),
+                Some(is_negative) => {
+                    if posting_is_negative == is_negative {
+                        return Err(http_err::bad_error(ValidationError::new(
+                            "all amounts of each ledger must be all positive or negative",
+                        )));
+                    }
+                }
+            }
+        }
+    }
+
+    for posting in postings {
         // find accound debit from payload with amount is zero and the tb_ledger is the same as the current item
-        let account_debit = account_debit_per_unit
+        let payee = payee_per_unit
             .iter()
-            .find(|d| d.1 == v.1.tb_ledger)
+            .find(|d| d.1 == posting.1.tb_ledger)
             .ok_or(http_err::bad_error(ValidationError::new(
                 "debit account not found in payload for this currency",
             )))?;
 
+        let (account_debit, account_credit, amount) = {
+            let is_amount_minus = posting.2.signum() == -1;
+            let amount = if is_amount_minus {
+                posting.2.neg()
+            } else {
+                posting.2
+            };
+            if is_amount_minus {
+                (payee.0, posting.0.tb_id, amount)
+            } else {
+                (posting.0.tb_id, payee.0, amount)
+            }
+        };
+
         let tb_transfer = tb::Transfer::new(tb::id())
-            .with_amount(v.2.try_into().unwrap())
+            .with_amount(amount.try_into().unwrap())
             .with_code(1)
-            .with_debit_account_id(account_debit.0.try_into().unwrap())
-            .with_credit_account_id(v.0.tb_id.try_into().unwrap())
+            .with_debit_account_id(account_debit.try_into().unwrap())
+            .with_credit_account_id(account_credit.try_into().unwrap())
             .with_user_data_64(user_data_64)
             .with_user_data_128(user_data_128)
-            .with_ledger(account_debit.1.try_into().unwrap());
+            .with_ledger(payee.1.try_into().unwrap());
 
         tb_transfers.push(tb_transfer);
     }
