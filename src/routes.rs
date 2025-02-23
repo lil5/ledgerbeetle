@@ -13,12 +13,12 @@ use validator::ValidationError;
 
 static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
 
-use crate::models::create_transfer_details;
 use crate::models::find_or_create_account;
 use crate::models::list_all_currencies;
 use crate::models::read_amount;
 use crate::models::Account;
 use crate::models::Currencies;
+use crate::models::{create_transfer_details, find_accounts_re};
 use crate::{http_err, models};
 
 #[derive(Clone)]
@@ -185,7 +185,26 @@ pub struct GetTransactionsRequest {
     #[validate(regex(path=*RE_DATE))]
     filter: String,
 }
-pub async fn get_transactions(Path(filter): Path<String>, State(state): State<AppState>) {}
+pub async fn get_transactions(
+    Path(filter): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<()>, http_err::HttpErr> {
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
+
+    let accounts = find_accounts_re(&conn, filter).await?;
+
+    for account in accounts.iter() {
+        let account_tb_id = account.tb_id.try_into().unwrap();
+        let filter = tb::core::account::Filter::new(account_tb_id, 1);
+        state
+            .tb
+            .get_account_balances(Box::new(filter))
+            .await
+            .map_err(http_err::internal_error)?;
+    }
+
+    return Ok(Json(()));
+}
 
 pub async fn get_commodities(
     State(state): State<AppState>,

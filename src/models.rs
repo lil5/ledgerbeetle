@@ -103,6 +103,23 @@ async fn create_account<'a>(
     Ok((account, currency))
 }
 
+pub async fn find_accounts_re(
+    conn: &Object,
+    filter: String,
+) -> Result<Vec<Account>, http_err::HttpErr> {
+    use crate::schema::accounts::dsl;
+
+    conn.interact(|conn| {
+        dsl::accounts
+            .select(Account::as_select())
+            .filter(dsl::name.like(filter))
+            .get_results::<Account>(conn)
+            .map_err(http_err::internal_error)
+    })
+    .await
+    .map_err(http_err::internal_error)?
+}
+
 pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
     let err = || http_err::bad_error(ValidationError::new("invalid amount"));
     let m = RE_AMOUNT.captures(a).ok_or(err())?;
@@ -136,16 +153,20 @@ pub async fn create_transfer_details(
     conn: &Object,
     values: NewTransferDetail,
 ) -> Result<(), http_err::HttpErr> {
-    use crate::schema::transfer_details::{dsl::*, table};
+    use crate::schema::transfer_details::table;
 
     conn.interact(move |conn| {
-        insert_into(table)
+        let res = insert_into(table)
             .values(values)
             .execute(conn)
             .map_err(http_err::internal_error);
+        match res {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     })
     .await
-    .map_err(http_err::internal_error)
+    .map_err(http_err::internal_error)?
 }
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::currencies)]
