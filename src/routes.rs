@@ -1,3 +1,4 @@
+use axum::extract::Path;
 use axum::{extract::State, response::Redirect, Json};
 use chrono::DateTime;
 use deadpool_diesel::postgres::Pool;
@@ -146,9 +147,7 @@ pub struct GetTransactionsRequest {
     #[validate(regex(path=*RE_DATE))]
     filter: String,
 }
-pub async fn get_transactions(State(state): State<AppState>) {
-    todo!()
-}
+pub async fn get_transactions(Path(filter): Path<String>, State(state): State<AppState>) {}
 
 pub async fn get_commodities(
     State(state): State<AppState>,

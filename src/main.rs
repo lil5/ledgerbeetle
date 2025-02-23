@@ -54,10 +54,10 @@ async fn main() {
         .route("/", get(routes::get_index))
         .route("/accountnames", get(routes::get_account_names))
         .route("/add", post(routes::post_add))
-        // .route(
-        //     "/accounttransactions/:accountnamefilter",
-        //     get(routes::get_transactions),
-        // )
+        .route(
+            "/accounttransactions/{filter}",
+            get(routes::get_transactions),
+        )
         .route("/commodities", get(routes::get_commodities))
         .route("/add", put(routes::post_add))
         .route("/version", get(routes::get_version))
