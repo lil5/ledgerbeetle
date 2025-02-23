@@ -13,6 +13,7 @@ static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d
 
 use crate::models::create_transfer_details;
 use crate::models::find_or_create_account;
+use crate::models::list_all_currencies;
 use crate::models::read_amount;
 use crate::models::Account;
 use crate::models::Currencies;
@@ -140,4 +141,20 @@ pub async fn post_add(
     Ok("hi".to_string())
 }
 
-// utils
+#[derive(Deserialize, Validate)]
+pub struct GetTransactionsRequest {
+    #[validate(regex(path=*RE_DATE))]
+    filter: String,
+}
+pub async fn get_transactions(State(state): State<AppState>) {
+    todo!()
+}
+
+pub async fn get_commodities(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<String>>, http_err::HttpErr> {
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
+    let res = list_all_currencies(&conn).await?;
+
+    Ok(Json(res))
+}

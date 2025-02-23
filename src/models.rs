@@ -204,6 +204,18 @@ async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, http
     .map_err(http_err::internal_error)?
 }
 
+pub async fn list_all_currencies(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
+    conn.interact(move |conn| {
+        use crate::schema::currencies::dsl;
+        return dsl::currencies
+            .select(dsl::unit)
+            .load(conn)
+            .map_err(http_err::internal_error);
+    })
+    .await
+    .map_err(http_err::internal_error)?
+}
+
 static ACCOUNT_TYPE_ALIAS: &str = "s";
 static ACCOUNT_TYPE_ASSETS: &str = "a";
 static ACCOUNT_TYPE_LIABILITIES: &str = "l";
