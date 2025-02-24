@@ -6,6 +6,8 @@ use std::sync::{Arc, LazyLock};
 use tigerbeetle_unofficial as tb;
 use validator::ValidationError;
 
+pub static TB_MAX_BATCH_SIZE: u32 = 8190;
+
 static RE_AMOUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)( ([A-Z]+))?$").unwrap());
 
 #[derive(Queryable, Selectable)]

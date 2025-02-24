@@ -1,0 +1,15 @@
+meta {
+  name: acounttransactions
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base}}/accounttransactions/{{account}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  account: assets
+}

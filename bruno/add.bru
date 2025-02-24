@@ -1,0 +1,128 @@
+meta {
+  name: add
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{base}}/add
+  body: formUrlEncoded
+  auth: none
+}
+
+body:json {
+  {
+    "tcomment": "",
+    "tpostings": [
+      {
+        "pbalanceassertion": null,
+        "pstatus": "Unmarked",
+        "pamount": [
+          {
+            "aprice": null,
+            "acommodity": "$",
+            "aquantity": {
+              "floatingPoint": 1,
+              "decimalPlaces": 10,
+              "decimalMantissa": 10000000000
+            },
+            "aismultiplier": false,
+            "astyle": {
+              "ascommodityside": "L",
+              "asdigitgroups": null,
+              "ascommodityspaced": false,
+              "asprecision": 2,
+              "asdecimalpoint": "."
+            }
+          }
+        ],
+        "ptransaction_": "1",
+        "paccount": "assets:bank:checking",
+        "pdate": null,
+        "ptype": "RegularPosting",
+        "pcomment": "",
+        "pdate2": null,
+        "ptags": [],
+        "poriginal": null
+      },
+      {
+        "pbalanceassertion": null,
+        "pstatus": "Unmarked",
+        "pamount": [
+          {
+            "aprice": null,
+            "acommodity": "$",
+            "aquantity": {
+              "floatingPoint": -1,
+              "decimalPlaces": 10,
+              "decimalMantissa": -10000000000
+            },
+            "aismultiplier": false,
+            "astyle": {
+              "ascommodityside": "L",
+              "asdigitgroups": null,
+              "ascommodityspaced": false,
+              "asprecision": 2,
+              "asdecimalpoint": "."
+            }
+          }
+        ],
+        "ptransaction_": "1",
+        "paccount": "income:salary",
+        "pdate": null,
+        "ptype": "RegularPosting",
+        "pcomment": "",
+        "pdate2": null,
+        "ptags": [],
+        "poriginal": null
+      }
+    ],
+    "ttags": [],
+    "tsourcepos": {
+      "tag": "JournalSourcePos",
+      "contents": [
+        "",
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    "tdate": "2008-01-01",
+    "tcode": "",
+    "tindex": 1,
+    "tprecedingcomment": "",
+    "tdate2": null,
+    "tdescription": "income",
+    "tstatus": "Unmarked"
+  }
+}
+
+body:form-urlencoded {
+  date: {{date}}
+  description: Lorem ipsum
+  account: assets:bank
+  amount: 10
+  account: income:work
+  amount: 
+  account: 
+  amount: 
+  account: 
+  amount: 
+  submit: 
+}
+
+body:multipart-form {
+  date: {{date}}
+  description: This is a description
+  account: assets:bank
+  amount: 20
+  account: income:work
+  amount: 
+}
+
+script:pre-request {
+  const moment = require("moment")
+  
+  bru.setVar("date", moment().format("YYYY-MM-DD"))
+}
