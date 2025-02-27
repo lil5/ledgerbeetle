@@ -12,9 +12,11 @@ mod schema;
 mod tb_utils;
 
 use axum::{
+    http::StatusCode,
     routing::{get, post, put},
     Extension, Router,
 };
+use axum_test::TestServer;
 use deadpool_diesel::postgres::Pool;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
@@ -40,6 +42,14 @@ pub struct AppState {
 async fn main() {
     // setup dot env
     dotenv().ok();
+
+    let app = router().await;
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn router() -> Router {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let tb_cluster_id = std::env::var("TB_CLIENT_ID")
         .expect("TB_CLIENT_ID must be set")
@@ -87,7 +97,32 @@ async fn main() {
         .route("/commodities", get(routes::get_commodities))
         .route("/version", get(routes::get_version))
         .with_state(app_state);
+    app
+}
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+#[tokio::test]
+async fn e2e() {
+    // setup dot env
+    dotenv().ok();
+
+    let app = router().await;
+
+    let server = TestServer::new(app).unwrap();
+
+    {
+        let response = server.get("/").await;
+        response.assert_status(StatusCode::TEMPORARY_REDIRECT);
+    }
+
+    {
+        let response = server.get("/accountnames").await;
+        let json = response.json::<hledger::ResponseAccountNames>();
+        assert!(json.iter().any(|v| v.starts_with("assets:")));
+    }
+    
+    {
+        let response = server.get("/commodities").await;
+        let json = response.json::<hledger::ResponseCommodities>();
+        assert!(json.iter().any(|v| v == ""));
+    }
 }
