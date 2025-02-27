@@ -1,9 +1,11 @@
-use crate::http_err;
+use crate::{hledger, http_err};
+use axum_macros::debug_handler;
 use deadpool_diesel::postgres::Object;
 use diesel::{insert_into, prelude::*, result::Error::NotFound};
 use regex::Regex;
 use std::sync::{Arc, LazyLock};
 use tigerbeetle_unofficial as tb;
+use tokio::sync::{RwLock, RwLockReadGuard};
 use validator::ValidationError;
 
 pub static TB_MAX_BATCH_SIZE: u32 = 8190;
@@ -31,12 +33,12 @@ pub async fn list_all_accounts(conn: &Object) -> Result<Vec<String>, http_err::H
     .map_err(http_err::internal_error)?
 }
 
-pub async fn find_or_create_account(
+pub async fn find_or_create_account<'a>(
+    tb: Box<Arc<RwLock<tb::Client>>>,
     conn: &Object,
-    tb: &Arc<tb::Client>,
     account_name: String,
     unit: String,
-) -> Result<(Account, Currencies), http_err::HttpErr> {
+) -> http_err::HttpResult<(Account, Currencies)> {
     use crate::schema::accounts::dsl::*;
 
     let account_name_clone = account_name.clone();
@@ -50,16 +52,17 @@ pub async fn find_or_create_account(
         .await
         .map_err(http_err::internal_error)?;
 
+    // return Err(http_err::internal_error(ValidationError::new("help")));
     match first_account {
         Ok(v) => {
-            let currency = create_currency(conn, unit).await?;
+            let currency = create_currency(conn, unit.clone()).await?;
             Ok((v, currency))
         }
         Err(err) => {
             if err != NotFound {
-                return Err(http_err::internal_error(err));
+                Err(http_err::internal_error(err))
             } else {
-                return create_account(&conn, &tb, account_name_clone, unit).await;
+                create_account(&conn, tb, account_name_clone, unit.clone()).await
             }
         }
     }
@@ -73,10 +76,11 @@ pub struct NewAccount<'a> {
 }
 async fn create_account<'a>(
     conn: &Object,
-    tb: &Arc<tb::Client>,
+    tb: Box<Arc<RwLock<tb::Client>>>,
     account_name: String,
     unit: String,
 ) -> Result<(Account, Currencies), http_err::HttpErr> {
+    // return Err(http_err::internal_error(ValidationError::new("stuff")));
     let currency = find_or_create_currency(&conn, unit).await?;
     let account = conn
         .interact(move |conn| {
@@ -98,7 +102,9 @@ async fn create_account<'a>(
         currency.tb_ledger.try_into().unwrap(),
         1,
     );
-    tb.create_accounts(vec![new_tb_account])
+    tb.read()
+        .await
+        .create_accounts(vec![new_tb_account])
         .await
         .map_err(http_err::internal_error)?;
 
@@ -136,40 +142,23 @@ pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
     Ok((one, unit))
 }
 
-#[derive(Queryable, Selectable)]
-#[diesel(table_name = crate::schema::transfer_details)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct TransferDetail {
-    pub id: i64,
-    pub tb_id: String,
-    pub description: String,
-}
-
-#[derive(Insertable)]
-#[diesel(table_name =  crate::schema::transfer_details)]
-pub struct NewTransferDetail {
-    pub tb_id: String,
-    pub description: String,
-}
-pub async fn create_transfer_details(
+pub async fn find_accounts_by_tb_ids(
     conn: &Object,
-    values: NewTransferDetail,
-) -> Result<(), http_err::HttpErr> {
-    use crate::schema::transfer_details::table;
+    tb_ids: Vec<i64>,
+) -> http_err::HttpResult<Vec<Account>> {
+    use crate::schema::accounts::dsl;
 
-    conn.interact(move |conn| {
-        let res = insert_into(table)
-            .values(values)
-            .execute(conn)
-            .map_err(http_err::internal_error);
-        match res {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
+    conn.interact(|conn| {
+        dsl::accounts
+            .select(Account::as_select())
+            .filter(dsl::tb_id.eq_any(tb_ids))
+            .get_results::<Account>(conn)
+            .map_err(http_err::internal_error)
     })
     .await
     .map_err(http_err::internal_error)?
 }
+
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::currencies)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -227,11 +216,22 @@ async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, http
     .map_err(http_err::internal_error)?
 }
 
-pub async fn list_all_currencies(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
+pub async fn list_all_currencie_units(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
     conn.interact(move |conn| {
         use crate::schema::currencies::dsl;
         return dsl::currencies
             .select(dsl::unit)
+            .load(conn)
+            .map_err(http_err::internal_error);
+    })
+    .await
+    .map_err(http_err::internal_error)?
+}
+pub async fn list_all_currencies(conn: &Object) -> Result<Vec<Currencies>, http_err::HttpErr> {
+    conn.interact(move |conn| {
+        use crate::schema::currencies::dsl;
+        return dsl::currencies
+            .select(dsl::currencies::all_columns())
             .load(conn)
             .map_err(http_err::internal_error);
     })

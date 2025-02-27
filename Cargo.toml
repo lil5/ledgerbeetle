@@ -10,12 +10,14 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.96"
 axum = "0.8.1"
+axum-macros = "0.5.0"
 chrono = "0.4.39"
 clap = "2"
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
 diesel = { version = "2", features = ["postgres"] }
 diesel_migrations = "2.2.0"
 dotenvy = "0.15.7"
+itertools = "0.14.0"
 regex = "1.11.1"
 serde = "1.0.218"
 tigerbeetle-unofficial = "=0.8.0"

@@ -1,128 +1,101 @@
 meta {
   name: add
   type: http
-  seq: 5
+  seq: 6
 }
 
 put {
   url: {{base}}/add
-  body: formUrlEncoded
+  body: json
   auth: none
 }
 
 body:json {
   {
+    "tcode": "",
     "tcomment": "",
+    "tdate": "2025-02-24",
+    "tdate2": null,
+    "tdescription": "0",
+    "tindex": 1,
     "tpostings": [
       {
-        "pbalanceassertion": null,
-        "pstatus": "Unmarked",
+        "paccount": "assets:bank",
         "pamount": [
           {
-            "aprice": null,
-            "acommodity": "$",
+            "acommodity": "",
+            "acost": null,
             "aquantity": {
-              "floatingPoint": 1,
-              "decimalPlaces": 10,
-              "decimalMantissa": 10000000000
+              "decimalMantissa": 200,
+              "decimalPlaces": 0,
+              "floatingPoint": 200
             },
-            "aismultiplier": false,
             "astyle": {
               "ascommodityside": "L",
-              "asdigitgroups": null,
               "ascommodityspaced": false,
-              "asprecision": 2,
-              "asdecimalpoint": "."
+              "asdecimalmark": ".",
+              "asdigitgroups": null,
+              "asprecision": 0,
+              "asrounding": "NoRounding"
             }
           }
         ],
-        "ptransaction_": "1",
-        "paccount": "assets:bank:checking",
-        "pdate": null,
-        "ptype": "RegularPosting",
+        "pbalanceassertion": null,
         "pcomment": "",
+        "pdate": null,
         "pdate2": null,
+        "poriginal": null,
+        "pstatus": "Unmarked",
         "ptags": [],
-        "poriginal": null
+        "ptransaction_": "1",
+        "ptype": "RegularPosting"
       },
       {
-        "pbalanceassertion": null,
-        "pstatus": "Unmarked",
+        "paccount": "income:work",
         "pamount": [
           {
-            "aprice": null,
-            "acommodity": "$",
+            "acommodity": "",
+            "acost": null,
             "aquantity": {
-              "floatingPoint": -1,
-              "decimalPlaces": 10,
-              "decimalMantissa": -10000000000
+              "decimalMantissa": -200,
+              "decimalPlaces": 0,
+              "floatingPoint": -200
             },
-            "aismultiplier": false,
             "astyle": {
               "ascommodityside": "L",
-              "asdigitgroups": null,
               "ascommodityspaced": false,
-              "asprecision": 2,
-              "asdecimalpoint": "."
+              "asdecimalmark": ".",
+              "asdigitgroups": null,
+              "asprecision": 0,
+              "asrounding": "NoRounding"
             }
           }
         ],
-        "ptransaction_": "1",
-        "paccount": "income:salary",
-        "pdate": null,
-        "ptype": "RegularPosting",
+        "pbalanceassertion": null,
         "pcomment": "",
+        "pdate": null,
         "pdate2": null,
+        "poriginal": null,
+        "pstatus": "Unmarked",
         "ptags": [],
-        "poriginal": null
+        "ptransaction_": "1",
+        "ptype": "RegularPosting"
       }
     ],
-    "ttags": [],
-    "tsourcepos": {
-      "tag": "JournalSourcePos",
-      "contents": [
-        "",
-        [
-          1,
-          1
-        ]
-      ]
-    },
-    "tdate": "2008-01-01",
-    "tcode": "",
-    "tindex": 1,
     "tprecedingcomment": "",
-    "tdate2": null,
-    "tdescription": "income",
-    "tstatus": "Unmarked"
+    "tsourcepos": [
+      {
+        "sourceColumn": 1,
+        "sourceLine": 2,
+        "sourceName": "/Users/lil5/Projects/climatecleanup/hledger_tb/.hledger.journal"
+      },
+      {
+        "sourceColumn": 1,
+        "sourceLine": 5,
+        "sourceName": "/Users/lil5/Projects/climatecleanup/hledger_tb/.hledger.journal"
+      }
+    ],
+    "tstatus": "Unmarked",
+    "ttags": []
   }
-}
-
-body:form-urlencoded {
-  date: {{date}}
-  description: Lorem ipsum
-  account: assets:bank
-  amount: 10
-  account: income:work
-  amount: 
-  account: 
-  amount: 
-  account: 
-  amount: 
-  submit: 
-}
-
-body:multipart-form {
-  date: {{date}}
-  description: This is a description
-  account: assets:bank
-  amount: 20
-  account: income:work
-  amount: 
-}
-
-script:pre-request {
-  const moment = require("moment")
-  
-  bru.setVar("date", moment().format("YYYY-MM-DD"))
 }

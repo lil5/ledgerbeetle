@@ -1,35 +1,25 @@
 use axum::extract::Path;
 use axum::{extract::State, response::Redirect, Json};
-use chrono::DateTime;
-use deadpool_diesel::postgres::Pool;
-use regex::Regex;
+use axum_macros::debug_handler;
+use itertools::Itertools as _;
 use serde::Deserialize;
-use std::ops::Neg;
-use std::sync::Arc;
-use std::sync::LazyLock;
+use std::collections::HashMap;
 use tigerbeetle_unofficial as tb;
 use validator::Validate;
 use validator::ValidationError;
+// static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
 
-static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
-
-use crate::models::list_all_currencies;
-use crate::models::read_amount;
+use crate::hledger::{Posting, RE_DATE};
+use crate::http_err::HttpResult;
+use crate::models::find_accounts_re;
 use crate::models::Account;
-use crate::models::Currencies;
-use crate::models::{create_transfer_details, find_accounts_re};
-use crate::models::{find_or_create_account, TB_MAX_BATCH_SIZE};
-use crate::{http_err, models};
-
-#[derive(Clone)]
-pub struct AppState {
-    pub pool: Pool,
-    pub tb: Arc<tb::Client>,
-}
+use crate::models::{list_all_currencie_units, list_all_currencies};
+use crate::tb_utils::u128::from_hex_string;
+use crate::{hledger, http_err, models, tb_utils, AppState};
 
 pub async fn get_account_names(
     State(state): State<AppState>,
-) -> Result<Json<Vec<String>>, http_err::HttpErr> {
+) -> http_err::HttpResult<Json<hledger::ResponseAccountNames>> {
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
     let accounts = models::list_all_accounts(&conn).await?;
@@ -39,6 +29,18 @@ pub async fn get_account_names(
 
 pub async fn get_index() -> Redirect {
     Redirect::temporary("/journal")
+}
+
+#[debug_handler]
+pub async fn test() -> Json<Vec<Vec<i32>>> {
+    let arr = vec![1, 2, 3, 4];
+    let mut res: Vec<Vec<i32>> = Vec::new();
+    for mut chunk in arr.into_iter().chunks(2).into_iter() {
+        let r = chunk.by_ref().collect::<Vec<i32>>();
+
+        res.push(r);
+    }
+    Json(res)
 }
 
 pub async fn get_version() -> Json<String> {
@@ -56,128 +58,113 @@ pub struct PostAddRequest {
     #[validate(length(min = 2))]
     amount: Vec<String>,
 }
-pub async fn post_add(
-    State(state): State<AppState>,
-    Json(payload): Json<PostAddRequest>,
-) -> Result<String, http_err::HttpErr> {
-    payload.validate().map_err(http_err::bad_error)?;
 
-    if payload.account.len() != payload.amount.len() {
+#[debug_handler]
+pub async fn put_add(
+    State(state): State<AppState>,
+    Json(payload): Json<hledger::RequestAdd>,
+) -> http_err::HttpResult<Json<()>> {
+    if !state.allow_add {
+        return Err(http_err::bad_error(std::io::Error::other(
+            "writing to ledger is disabled",
+        )));
+    }
+    let payload = vec![payload];
+    // let payload = match payload {
+    //     hledger::RequestAdd::RequestAddSingular(transaction) => vec![transaction],
+    //     hledger::RequestAdd::RequestAddMultiple(transactions) => transactions,
+    // };
+    if payload.len() == 0 {
         return Err(http_err::bad_error(ValidationError::new(
-            "account must be the same length as amount",
+            "Must contain at least one transaction",
         )));
     }
 
+    payload.validate().map_err(http_err::bad_error)?;
+
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
-    let mut payload_transfers: Vec<(Account, Currencies, i64, String)> = Vec::new();
-    for (i, account_name) in payload.account.iter().enumerate() {
-        let found_amount = payload.account.get(i).unwrap();
-        let found_amount = read_amount(&found_amount)?;
+    let currencies = models::list_all_currencies(&conn).await?;
 
-        let (account, currency) = find_or_create_account(
-            &conn,
-            &(state.tb),
-            account_name.to_string(),
-            found_amount.1.clone(),
-        )
-        .await?;
-        payload_transfers.push((account, currency, found_amount.0, found_amount.1));
-    }
+    let mut tranfers: Vec<tb::Transfer> = Vec::new();
+    for (index, transaction) in payload.iter().enumerate() {
+        let tpostings = transaction.tpostings.clone();
+        let chunks: Vec<Vec<Posting>> = tpostings
+            .into_iter()
+            .chunks(2)
+            .to_owned()
+            .into_iter()
+            .map(|chunk| chunk.collect::<Vec<Posting>>())
+            .collect();
+        for chunk in chunks.iter() {
+            let posting_credit = chunk.get(0).unwrap();
+            let posting_debit = chunk.get(0).unwrap();
 
-    let payee_per_unit: Vec<(i64, i32)> = payload_transfers
-        .iter()
-        .filter_map(|v| {
-            if v.2 == 0 {
-                Some((v.0.tb_id, v.1.tb_ledger))
-            } else {
-                None
+            let first_pamount = posting_credit.pamount.iter().nth(0).unwrap();
+            let (account_credit, currency) = models::find_or_create_account(
+                Box::new(state.tb.clone()),
+                &conn,
+                posting_credit.paccount.clone(),
+                first_pamount.acommodity.clone(),
+            )
+            .await?;
+            let (account_debit, _) = models::find_or_create_account(
+                Box::new(state.tb.clone()),
+                &conn,
+                posting_debit.paccount.clone(),
+                posting_debit
+                    .pamount
+                    .iter()
+                    .nth(0)
+                    .unwrap()
+                    .acommodity
+                    .clone(),
+            )
+            .await?;
+
+            let code = transaction.tcode.parse::<u16>().unwrap_or(1);
+
+            let user_data_64 = transaction
+                .tdate2
+                .clone()
+                .map(|d| d.parse::<u64>().unwrap_or(0))
+                .unwrap_or(0);
+            let user_data_128 = tb_utils::u128::from_hex_string(&transaction.tdescription);
+
+            let mut tranfer =
+                tb::Transfer::new(from_hex_string(posting_credit.ptransaction.as_str()))
+                    .with_amount(
+                        posting_debit
+                            .pamount
+                            .first()
+                            .unwrap()
+                            .aquantity
+                            .decimal_mantissa as u128,
+                    )
+                    .with_code(code)
+                    .with_credit_account_id(account_credit.tb_id as u128)
+                    .with_debit_account_id(account_debit.tb_id as u128)
+                    .with_user_data_128(user_data_128)
+                    .with_user_data_64(user_data_64)
+                    .with_ledger(currency.tb_ledger as u32);
+
+            // forces all transfers to be a linked
+            // see: https://docs.tigerbeetle.com/coding/linked-events/
+            if index == payload.len() - 1 && index != 0 {
+                tranfer = tranfer.with_flags(tb::transfer::Flags::LINKED)
             }
-        })
-        .collect();
-
-    let user_data_64 = DateTime::parse_from_str(payload.date.as_str(), "%Y-%m-%d")
-        .map_err(http_err::bad_error)?
-        .timestamp()
-        .try_into()
-        .unwrap();
-    let user_data_128 = tb::id();
-    let mut tb_transfers: Vec<tb::Transfer> = Vec::new();
-
-    let postings = payload_transfers.iter().filter(|v| v.2 != 0);
-
-    // Chunk per tb_ledger then check that all amounts are all negative or positive
-    for postings_by_unit in postings
-        .clone()
-        .collect::<Vec<_>>()
-        .chunk_by(|a, b| a.1.tb_ledger == b.1.tb_ledger)
-    {
-        let mut is_negative: Option<bool> = None;
-        for posting_is_negative in postings_by_unit.iter().map(|v| v.2.is_negative()) {
-            match is_negative {
-                None => is_negative = Some(posting_is_negative),
-                Some(is_negative) => {
-                    if posting_is_negative == is_negative {
-                        return Err(http_err::bad_error(ValidationError::new(
-                            "all amounts of each ledger must be all positive or negative",
-                        )));
-                    }
-                }
-            }
+            tranfers.push(tranfer);
         }
     }
-
-    for posting in postings {
-        // find accound debit from payload with amount is zero and the tb_ledger is the same as the current item
-        let payee = payee_per_unit
-            .iter()
-            .find(|d| d.1 == posting.1.tb_ledger)
-            .ok_or(http_err::bad_error(ValidationError::new(
-                "debit account not found in payload for this currency",
-            )))?;
-
-        let (account_debit, account_credit, amount) = {
-            let is_amount_minus = posting.2.signum() == -1;
-            let amount = if is_amount_minus {
-                posting.2.neg()
-            } else {
-                posting.2
-            };
-            if is_amount_minus {
-                (payee.0, posting.0.tb_id, amount)
-            } else {
-                (posting.0.tb_id, payee.0, amount)
-            }
-        };
-
-        let tb_transfer = tb::Transfer::new(tb::id())
-            .with_amount(amount.try_into().unwrap())
-            .with_code(1)
-            .with_debit_account_id(account_debit.try_into().unwrap())
-            .with_credit_account_id(account_credit.try_into().unwrap())
-            .with_user_data_64(user_data_64)
-            .with_user_data_128(user_data_128)
-            .with_ledger(payee.1.try_into().unwrap());
-
-        tb_transfers.push(tb_transfer);
-    }
-
     state
         .tb
-        .create_transfers(tb_transfers)
+        .read()
+        .await
+        .create_transfers(tranfers)
         .await
         .map_err(http_err::internal_error)?;
 
-    create_transfer_details(
-        &conn,
-        models::NewTransferDetail {
-            tb_id: user_data_128.to_string(),
-            description: payload.description,
-        },
-    )
-    .await?;
-
-    Ok("hi".to_string())
+    Ok(Json(()))
 }
 
 #[derive(Deserialize, Validate)]
@@ -188,37 +175,87 @@ pub struct GetTransactionsRequest {
 pub async fn get_transactions(
     Path(filter): Path<String>,
     State(state): State<AppState>,
-) -> Result<Json<()>, http_err::HttpErr> {
+) -> Result<Json<hledger::ResponseTransactions>, http_err::HttpErr> {
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
-    let accounts = find_accounts_re(&conn, filter).await?;
+    let accounts: Vec<Account> = find_accounts_re(&conn, filter).await?;
+    let currencies = list_all_currencies(&conn).await?;
+    let currencies = currencies
+        .iter()
+        .map(|c| {
+            (
+                c.tb_ledger as u32,
+                (c, hledger::AmountStyle::from_tb(c.unit.clone())),
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
+    // collect all transfers in a hashmap
+    let mut transfers: HashMap<u128, tb::Transfer> = HashMap::new();
     for account in accounts.iter() {
+        // get transfers per account
         let account_tb_id = account.tb_id.try_into().unwrap();
 
-        let filter = tb::core::account::Filter::new(account_tb_id, TB_MAX_BATCH_SIZE);
-        let transfers = state
+        let filter = tb::core::account::Filter::new(account_tb_id, u32::MAX);
+        let transfers_data: Vec<tb::core::Transfer> = state
             .tb
+            .read()
+            .await
             .get_account_transfers(Box::new(filter))
             .await
             .map_err(http_err::internal_error)?;
-
-        // let filter = tb::core::account::Filter::new(account_tb_id, 1);
-        // let ba = state
-        //     .tb
-        //     .get_account_balances(Box::new(filter))
-        //     .await
-        //     .map_err(http_err::internal_error)?;
+        for transfer in transfers_data.iter() {
+            let id = transfer.id();
+            if !transfers.contains_key(&id) {
+                transfers.insert(id, *transfer);
+            }
+        }
     }
 
-    return Ok(Json(()));
+    // collect all accounts
+    let mut accounts = accounts
+        .iter()
+        .map(|a| (a.tb_id as u128, a))
+        .collect::<HashMap<u128, &Account>>();
+    let mut missing_account_tb_ids: Vec<i64> = Vec::new();
+    for transfer in transfers.values() {
+        for account_tb_id in vec![transfer.credit_account_id(), transfer.debit_account_id()].iter()
+        {
+            if !accounts.contains_key(account_tb_id) {
+                missing_account_tb_ids.push(*account_tb_id as i64);
+            }
+        }
+    }
+
+    let more_accounts = models::find_accounts_by_tb_ids(&conn, missing_account_tb_ids).await?;
+    more_accounts.iter().for_each(|a| {
+        accounts.insert(a.tb_id as u128, &a);
+    });
+
+    let mut index = 0;
+    let transactions = transfers
+        .iter()
+        .map(|(_, transfer)| {
+            let (currency, amount_style) = currencies.get(&(transfer.ledger())).unwrap();
+            hledger::Transaction::from_tb(
+                *transfer,
+                Box::new(accounts.clone()),
+                currency,
+                amount_style.clone(),
+                &mut index,
+            )
+            .map_err(|_| http_err::internal_error(ValidationError::new("err")))
+        })
+        .collect::<HttpResult<hledger::ResponseTransactions>>()?;
+
+    return Ok(Json(transactions));
 }
 
 pub async fn get_commodities(
     State(state): State<AppState>,
-) -> Result<Json<Vec<String>>, http_err::HttpErr> {
+) -> Result<Json<hledger::ResponseCommodities>, http_err::HttpErr> {
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
-    let res = list_all_currencies(&conn).await?;
+    let res = list_all_currencie_units(&conn).await?;
 
     Ok(Json(res))
 }

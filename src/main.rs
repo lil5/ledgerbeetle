@@ -1,21 +1,40 @@
-use std::sync::Arc;
+use std::{
+    ops::Deref,
+    rc::Rc,
+    sync::{Arc, LazyLock},
+};
+mod hledger;
+mod http_err;
 mod models;
+
 mod routes;
 mod schema;
+mod tb_utils;
 
 use axum::{
     routing::{get, post, put},
-    Router,
+    Extension, Router,
 };
+use deadpool_diesel::postgres::Pool;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
-use hledger_tb::http_err;
+use regex::Regex;
 use tigerbeetle_unofficial as tb;
+use tokio::sync::{Mutex, RwLock};
 extern crate clap;
 
 // this embeds the migrations into the application binary
 // the migration path is relative to the `CARGO_MANIFEST_DIR`
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
+static RE_ENV_TRUE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(1|true|True|TRUE)$").unwrap());
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: Pool,
+    pub tb: Arc<RwLock<tb::Client>>,
+    pub allow_add: bool,
+}
 
 #[tokio::main]
 async fn main() {
@@ -27,6 +46,8 @@ async fn main() {
         .parse()
         .expect("TB_CLIENT_ID must be a number");
     let tb_address = std::env::var("TB_ADDRESS").expect("TB_ADDRESS must be set");
+    let allow_add =
+        RE_ENV_TRUE.is_match(&std::env::var("ALLOW_ADD").expect("ALLOW_ADD must be set"));
 
     // setup connection pool
     let manager =
@@ -44,22 +65,26 @@ async fn main() {
             .unwrap();
     }
 
-    let tb = Arc::new(
+    let tb = Arc::new(RwLock::new(
         tb::Client::new(tb_cluster_id, tb_address).expect("Unable to connect to tigerbeetle"),
-    );
+    ));
 
-    let app_state = routes::AppState { pool, tb };
+    let app_state = AppState {
+        pool,
+        tb,
+        allow_add,
+    };
 
     let app = Router::new()
         .route("/", get(routes::get_index))
         .route("/accountnames", get(routes::get_account_names))
-        .route("/add", post(routes::post_add))
+        .route("/add", put(routes::put_add))
+        .route("/test", get(routes::test))
         .route(
             "/accounttransactions/{filter}",
             get(routes::get_transactions),
         )
         .route("/commodities", get(routes::get_commodities))
-        .route("/add", put(routes::post_add))
         .route("/version", get(routes::get_version))
         .with_state(app_state);
 

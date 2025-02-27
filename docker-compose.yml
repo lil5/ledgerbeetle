@@ -3,7 +3,6 @@ name: hledger_tb
 services:
   db:
     image: postgres:alpine
-    restart: always
     # set shared memory limit when using docker-compose
     shm_size: 128mb
     environment:
@@ -27,7 +26,6 @@ services:
       retries: 5
     # command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
     command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
-
 
 volumes:
   app_registry:
