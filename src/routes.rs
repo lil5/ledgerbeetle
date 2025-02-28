@@ -154,22 +154,23 @@ pub async fn put_add(
 
             assert_ne!(account_credit.tb_id, account_debit.tb_id);
 
-            let mut tranfer =
-                tb::Transfer::new(from_hex_string(posting_credit.ptransaction.as_str()))
-                    .with_amount(
-                        posting_debit
-                            .pamount
-                            .first()
-                            .unwrap()
-                            .aquantity
-                            .decimal_mantissa as u128,
-                    )
-                    .with_code(code)
-                    .with_debit_account_id(account_debit.tb_id as u128)
-                    .with_credit_account_id(account_credit.tb_id as u128)
-                    .with_user_data_128(user_data_128)
-                    .with_user_data_64(user_data_64)
-                    .with_ledger(currency.tb_ledger as u32);
+            let id = posting_credit.ptransaction.as_str();
+            println!("transfer id: {id}");
+            let mut tranfer = tb::Transfer::new(from_hex_string(id))
+                .with_amount(
+                    posting_debit
+                        .pamount
+                        .first()
+                        .unwrap()
+                        .aquantity
+                        .decimal_mantissa as u128,
+                )
+                .with_code(code)
+                .with_debit_account_id(account_debit.tb_id as u128)
+                .with_credit_account_id(account_credit.tb_id as u128)
+                .with_user_data_128(user_data_128)
+                .with_user_data_64(user_data_64)
+                .with_ledger(currency.tb_ledger as u32);
 
             // forces all transfers to be a linked
             // see: https://docs.tigerbeetle.com/coding/linked-events/
@@ -180,7 +181,14 @@ pub async fn put_add(
         }
     }
 
-    assert_eq!(tranfers.len(), payload.len());
+    assert_eq!(
+        tranfers.len() * 2,
+        payload
+            .iter()
+            .map(|p| p.tpostings.len())
+            .reduce(|acc, p| acc + p)
+            .unwrap()
+    );
     state
         .tb
         .read()
@@ -188,7 +196,10 @@ pub async fn put_add(
         .create_transfers(tranfers)
         .await
         .map_err(|e: tb::core::error::CreateTransfersError| {
-            http_err::internal_error(tb_utils::create_transfers_error_name(e))
+            http_err::internal_error(format!(
+                "error on adding transfers to tigerbeetle: {}",
+                tb_utils::create_transfers_error_name(e)
+            ))
         })?;
 
     Ok(Json(()))

@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug};
 
+use itertools::Itertools;
 use tigerbeetle_unofficial as tb;
 pub mod u128 {
     pub fn to_hex_string(n: u128) -> String {
@@ -29,20 +30,20 @@ mod tests {
     }
 }
 
-pub fn create_transfers_error_name<'a>(err: tb::core::error::CreateTransfersError) -> &'a str {
+pub fn create_transfers_error_name(err: tb::core::error::CreateTransfersError) -> String {
     match err {
         tigerbeetle_unofficial::error::CreateTransfersError::Send(err) => {
-            err.kind().into_snake_case_str()
+            err.kind().into_snake_case_str().to_string()
         }
 
         tigerbeetle_unofficial::error::CreateTransfersError::Api(err) => {
             let errs = err.as_slice();
-            let err = errs.first();
-            match err {
-                Some(err) => err.kind().into_snake_case_str(),
-                None => "unknown create transfer error",
-            }
+            let err = errs
+                .iter()
+                .map(|err| err.kind().into_snake_case_str())
+                .join(", ");
+            err
         }
-        _ => "unknown error",
+        _ => String::from("unknown error"),
     }
 }
