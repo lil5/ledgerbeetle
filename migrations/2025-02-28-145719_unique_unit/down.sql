@@ -1,0 +1,2 @@
+ALTER TABLE currencies
+DROP CONSTRAINT currencies_unit_unique;

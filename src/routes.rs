@@ -106,8 +106,6 @@ pub async fn put_add(
 
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
-    let currencies = models::list_all_currencies(&conn).await?;
-
     let mut tranfers: Vec<tb::Transfer> = Vec::new();
     for (index, transaction) in payload.iter().enumerate() {
         let tpostings = transaction.tpostings.clone();

@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.96"
 axum = "0.8.1"
+axum-ctx = "0.4.0"
 axum-macros = "0.5.0"
 axum-test = "17.2.0"
 chrono = "0.4.39"

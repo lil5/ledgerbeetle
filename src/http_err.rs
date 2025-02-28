@@ -15,3 +15,10 @@ where
 {
     (StatusCode::BAD_REQUEST, err.to_string())
 }
+
+pub fn teapot_error<E>(err: E) -> HttpErr
+where
+    E: ToString,
+{
+    (StatusCode::IM_A_TEAPOT, err.to_string())
+}

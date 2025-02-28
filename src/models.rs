@@ -1,7 +1,4 @@
-use crate::{
-    hledger::{self, RE_ACCOUNT},
-    http_err,
-};
+use crate::{hledger, http_err};
 use axum_macros::debug_handler;
 use deadpool_diesel::postgres::Object;
 use diesel::{dsl::Like, insert_into, prelude::*, result::Error::NotFound};
@@ -13,8 +10,6 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 use validator::ValidationError;
 
 pub static TB_MAX_BATCH_SIZE: u32 = 8190;
-
-static RE_AMOUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\d+)( ([A-Z]+))?$").unwrap());
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::accounts)]
@@ -56,10 +51,9 @@ pub async fn find_or_create_account<'a>(
         .await
         .map_err(http_err::internal_error)?;
 
-    // return Err(http_err::internal_error(ValidationError::new("help")));
     match first_account {
         Ok(v) => {
-            let currency = create_currency(conn, unit.clone()).await?;
+            let currency = find_or_create_currency(conn, unit.clone()).await?;
             Ok((v, currency))
         }
         Err(err) => {
@@ -87,6 +81,7 @@ async fn create_account<'a>(
     // return Err(http_err::internal_error(ValidationError::new("stuff")));
     let currency = find_or_create_currency(&conn, unit).await?;
     let account_name_clone = account_name.clone();
+    println!("account_name: {}", account_name);
     let account = conn
         .interact(move |conn| {
             let new_account = NewAccount {
@@ -155,20 +150,6 @@ pub async fn find_accounts_re(
     .map_err(http_err::internal_error)?
 }
 
-pub fn read_amount(a: &str) -> Result<(i64, String), http_err::HttpErr> {
-    let err = || http_err::bad_error(ValidationError::new("invalid amount"));
-    let m = RE_AMOUNT.captures(a).ok_or(err())?;
-    let one = m.get(1).ok_or(err()).map(|v| v.as_str())?;
-    let one = one.parse::<i64>().map_err(|_| err())?;
-    let unit = match m.get(3) {
-        Some(v) => v.as_str(),
-        None => "",
-    }
-    .to_string();
-
-    Ok((one, unit))
-}
-
 pub async fn find_accounts_by_tb_ids(
     conn: &Object,
     tb_ids: Vec<i64>,
@@ -209,16 +190,17 @@ async fn find_or_create_currency(
                 .first(conn)
         })
         .await
-        .map_err(http_err::internal_error)?;
+        .map_err(http_err::teapot_error)?;
 
     match first_currency {
         Ok(v) => Ok(v),
         Err(err) => {
-            if err != NotFound {
-                Err(http_err::internal_error(err))
-            } else {
-                create_currency(&conn, unit_clone).await
-            }
+            Err(http_err::teapot_error(err))
+            // if err != NotFound {
+            // } else {
+            //     println!("{}", err);
+            //     create_currency(&conn, unit_clone).await
+            // }
         }
     }
 }
@@ -281,7 +263,7 @@ pub enum AccountType {
 
 impl AccountType {
     fn read(v: &str) -> Result<AccountType, ValidationError> {
-        RE_ACCOUNT
+        hledger::RE_ACCOUNT
             .find_at(v, 1)
             .and_then(|v| match v.as_str() {
                 ACCOUNT_TYPE_ASSETS => Some(AccountType::Assets),
@@ -291,7 +273,10 @@ impl AccountType {
                 ACCOUNT_TYPE_EXPENSES => Some(AccountType::Expenses),
                 _ => None,
             })
-            .ok_or(ValidationError::new("invalid account name"))
+            .ok_or({
+                println!("invalid account name: {}", v);
+                ValidationError::new("invalid account name")
+            })
     }
 
     fn to_string<'a>(self) -> &'a str {

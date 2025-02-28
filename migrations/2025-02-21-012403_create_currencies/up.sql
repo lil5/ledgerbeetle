@@ -6,7 +6,7 @@ CREATE TABLE
   );
 
 ALTER TABLE accounts
-ADD COLUMN currencies_id INT UNIQUE;
+ADD COLUMN currencies_id INT;
 
 ALTER TABLE accounts
 ADD CONSTRAINT fk_currencies FOREIGN KEY (currencies_id) REFERENCES currencies (id);

@@ -47,7 +47,7 @@ body:json {
         "poriginal": null,
         "pstatus": "Unmarked",
         "ptags": [],
-        "ptransaction_": "1",
+        "ptransaction_": "{{ptransaction}}",
         "ptype": "RegularPosting"
       },
       {
@@ -78,7 +78,7 @@ body:json {
         "poriginal": null,
         "pstatus": "Unmarked",
         "ptags": [],
-        "ptransaction_": "1",
+        "ptransaction_": "{{ptransaction}}",
         "ptype": "RegularPosting"
       }
     ],
@@ -98,4 +98,8 @@ body:json {
     "tstatus": "Unmarked",
     "ttags": []
   }
+}
+
+script:pre-request {
+  bru.setEnvVar("ptransaction",Math.floor(new Date('2012.08.10').getTime() / 1000).toString())
 }
