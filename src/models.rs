@@ -60,6 +60,7 @@ pub async fn find_or_create_account<'a>(
             if err != NotFound {
                 Err(http_err::internal_error(err))
             } else {
+                println!("account {} not found creating...", account_name_clone);
                 create_account(&conn, tb, account_name_clone, unit.clone()).await
             }
         }
@@ -81,7 +82,8 @@ async fn create_account<'a>(
     // return Err(http_err::internal_error(ValidationError::new("stuff")));
     let currency = find_or_create_currency(&conn, unit).await?;
     let account_name_clone = account_name.clone();
-    println!("account_name: {}", account_name);
+    let account_type = AccountType::read(account_name.as_str()).map_err(http_err::bad_error)?;
+    println!("creating account_name: {}", account_name);
     let account = conn
         .interact(move |conn| {
             let new_account = NewAccount {
@@ -97,7 +99,6 @@ async fn create_account<'a>(
         .await
         .map_err(http_err::internal_error)??;
 
-    let account_type = AccountType::read(account_name.as_str()).map_err(http_err::bad_error)?;
     let flags = {
         let mut flags = tb::account::Flags::empty();
         let (disallow_red, disallow_green) = account_type.must_not_exceed();
@@ -264,14 +265,18 @@ pub enum AccountType {
 impl AccountType {
     fn read(v: &str) -> Result<AccountType, ValidationError> {
         hledger::RE_ACCOUNT
-            .find_at(v, 1)
-            .and_then(|v| match v.as_str() {
-                ACCOUNT_TYPE_ASSETS => Some(AccountType::Assets),
-                ACCOUNT_TYPE_LIABILITIES => Some(AccountType::Liabilities),
-                ACCOUNT_TYPE_EQUITY => Some(AccountType::Equity),
-                ACCOUNT_TYPE_REVENUES => Some(AccountType::Revenues),
-                ACCOUNT_TYPE_EXPENSES => Some(AccountType::Expenses),
-                _ => None,
+            .captures(v)
+            .and_then(|v| v.get(1))
+            .and_then(|v| {
+                let v = v.as_str();
+                match v {
+                    ACCOUNT_TYPE_ASSETS => Some(AccountType::Assets),
+                    ACCOUNT_TYPE_LIABILITIES => Some(AccountType::Liabilities),
+                    ACCOUNT_TYPE_EQUITY => Some(AccountType::Equity),
+                    ACCOUNT_TYPE_REVENUES => Some(AccountType::Revenues),
+                    ACCOUNT_TYPE_EXPENSES => Some(AccountType::Expenses),
+                    _ => None,
+                }
             })
             .ok_or({
                 println!("invalid account name: {}", v);

@@ -153,6 +153,7 @@ pub async fn put_add(
             let user_data_128 = tb_utils::u128::from_hex_string(&transaction.tdescription);
 
             assert_ne!(account_credit.tb_id, account_debit.tb_id);
+            println!("accounts: {} {}", account_credit.tb_id, account_debit.tb_id);
 
             let id = posting_credit.ptransaction.as_str();
             println!("transfer id: {id}");
@@ -174,7 +175,7 @@ pub async fn put_add(
 
             // forces all transfers to be a linked
             // see: https://docs.tigerbeetle.com/coding/linked-events/
-            if index == payload.len() - 1 && index != 0 {
+            if payload.len() > 1 && index != payload.len() - 1 {
                 tranfer = tranfer.with_flags(tb::transfer::Flags::LINKED)
             }
             tranfers.push(tranfer);
