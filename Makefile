@@ -15,4 +15,4 @@ start:
 	cargo run
 
 hledger-start:
-	hledger-web --serve --rules=view,add,manage -f .hledger.journal
+	hledger-web --serve --allow=edit -f .hledger.journal

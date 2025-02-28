@@ -1,6 +1,7 @@
 use itertools::Itertools as _;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fmt::format;
 use std::time::UNIX_EPOCH;
 use std::{ops::Neg, sync::LazyLock};
 use tigerbeetle_unofficial as tb;
@@ -43,6 +44,11 @@ pub type ResponseTransactions = Vec<Transaction>;
 
 pub type Value = Option<()>;
 pub static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
+pub static RE_ACCOUNTS_FIND: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").unwrap());
+pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(assets|liabilities|equity|revenues|expenses):([a-z0-9]+:)*([a-z0-9]+)$").unwrap()
+});
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,10 +91,10 @@ fn validate_postings(postings: &Vec<Posting>) -> Result<(), ValidationError> {
 
     for chunk in &postings.into_iter().chunks(2) {
         let v = chunk.collect::<Vec<&Posting>>();
-        let posting_credit = v.get(0).unwrap();
         let posting_debit = v.get(0).unwrap();
+        let posting_credit = v.get(1).unwrap();
 
-        posting_credit.validate_against_debit(posting_debit)?;
+        posting_debit.validate_self_debit_against_credit(&posting_credit)?;
     }
 
     Ok(())
@@ -148,16 +154,30 @@ impl Transaction {
             tpostings: postings,
             tprecedingcomment: String::new(),
             tsourcepos: vec![],
-            tstatus: "".to_string(),
+            tstatus: String::from(""),
             ttags: vec![],
         })
+    }
+
+    pub fn to_hledger_string(&self) -> String {
+        let postings_str = self
+            .tpostings
+            .iter()
+            .map(|p| p.to_hledger_string())
+            .join("\n");
+        format!(
+            "{: >10} * {}\n{}\n",
+            *self.tdate2.as_ref().unwrap_or(&self.tdate),
+            self.tdescription,
+            postings_str,
+        )
     }
 }
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Posting {
-    #[validate(length(min = 1))]
+    #[validate(regex(path=*RE_ACCOUNT))]
     pub paccount: String,
     #[validate(length(min = 1))]
     pub pamount: Vec<Amount>,
@@ -180,19 +200,51 @@ impl Posting {
             paccount: paccount,
             pamount: vec![pamount],
             pbalanceassertion: None,
-            pcomment: "".to_string(),
+            pcomment: String::from(""),
             pdate: None,
             pdate2: None,
             poriginal: None,
-            pstatus: "Cleared".to_string(),
+            pstatus: String::from("Cleared"),
             ptags: vec![],
             ptransaction: ptransaction,
-            ptype: "RegularPosting".to_string(),
+            ptype: String::from("RegularPosting"),
         }
     }
 
-    pub fn validate_against_debit(&self, debit: &Posting) -> Result<(), ValidationError> {
+    pub fn validate_self_debit_against_credit(
+        &self,
+        credit: &Posting,
+    ) -> Result<(), ValidationError> {
+        let debit = self;
+        let debit_amount = debit.pamount.iter().nth(0).unwrap();
+        let decimal_mantissa = debit_amount.aquantity.decimal_mantissa;
+        let credit_amount = credit.pamount.iter().nth(0).unwrap();
+        let credit_mantissa = credit_amount.aquantity.decimal_mantissa;
+        if decimal_mantissa.is_negative() {
+            return Err(ValidationError::new("debit must be positive"));
+        }
+        if credit_mantissa.is_positive() {
+            return Err(ValidationError::new("credit must be negative"));
+        }
+        if decimal_mantissa != (credit_mantissa * -1) {
+            return Err(ValidationError::new(
+                "debit amount must be the positive version of the credit amount",
+            ));
+        }
+        if debit_amount.acommodity != credit_amount.acommodity {
+            return Err(ValidationError::new(
+                "debit and credit must be of the same commodity",
+            ));
+        }
         Ok(())
+    }
+
+    pub fn to_hledger_string(&self) -> String {
+        let pamount = self.pamount.iter().nth(0).unwrap();
+        format!(
+            "    {: >20} {: >8} {}\n",
+            self.paccount, pamount.aquantity.decimal_mantissa, pamount.acommodity,
+        )
     }
 }
 
@@ -203,6 +255,15 @@ pub struct Amount {
     pub acost: Value,
     pub aquantity: Quantity,
     pub astyle: AmountStyle,
+}
+
+fn validate_quantity(q: &Quantity) -> Result<(), ValidationError> {
+    if q.decimal_mantissa != q.floating_point {
+        return Err(ValidationError::new(
+            "decimal_mantissa must be equal to floating_point",
+        ));
+    }
+    Ok(())
 }
 
 /// Style of the commodity in use
@@ -220,21 +281,21 @@ impl AmountStyle {
     pub fn from_tb(commodity: String) -> AmountStyle {
         if commodity == "" {
             AmountStyle {
-                ascommodityside: "L".to_string(),
+                ascommodityside: String::from("L"),
                 ascommodityspaced: false,
-                asdecimalmark: ".".to_string(),
+                asdecimalmark: String::from("."),
                 asdigitgroups: None,
                 asprecision: 0,
-                asrounding: "NoRounding".to_string(),
+                asrounding: String::from("NoRounding"),
             }
         } else {
             AmountStyle {
-                ascommodityside: "R".to_string(),
+                ascommodityside: String::from("R"),
                 ascommodityspaced: true,
-                asdecimalmark: ".".to_string(),
+                asdecimalmark: String::from("."),
                 asdigitgroups: None,
                 asprecision: 0,
-                asrounding: "NoRounding".to_string(),
+                asrounding: String::from("NoRounding"),
             }
         }
     }
