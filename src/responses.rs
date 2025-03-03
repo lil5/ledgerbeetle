@@ -23,7 +23,6 @@ pub type ResponseBalances = Vec<Balance>;
 // Types
 // ------------------------------------
 
-pub type Value = Option<()>;
 pub static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
 pub static RE_ACCOUNTS_FIND: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").unwrap());
@@ -35,7 +34,9 @@ pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     /// commodity used
-    pub commodity: String,
+    pub commodity_unit: String,
+
+    pub commodity_decimal: i32,
     /// transaction code
     pub code: i32,
     /// unix time seconds
@@ -72,7 +73,7 @@ pub struct AddTransactions {
 #[serde(rename_all = "camelCase")]
 pub struct AddTransaction {
     /// commodity used
-    pub commodity: String,
+    pub commodity_unit: String,
     /// transaction code
     pub code: i32,
     /// random hex u128 string
@@ -125,7 +126,8 @@ impl Transaction {
             credit_account,
             debit_amount,
             credit_amount: debit_amount.neg(),
-            commodity: commodity.unit.clone(),
+            commodity_unit: commodity.unit.clone(),
+            commodity_decimal: commodity.decimal_place,
         })
     }
 
@@ -139,10 +141,10 @@ impl Transaction {
             self.related_id,
             self.debit_account,
             self.debit_amount,
-            self.commodity,
+            self.commodity_unit,
             self.credit_account,
             self.credit_amount,
-            self.commodity,
+            self.commodity_unit,
         )
     }
 }

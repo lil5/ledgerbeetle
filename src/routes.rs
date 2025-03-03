@@ -82,7 +82,7 @@ pub async fn put_add(
             Box::new(state.tb.clone()),
             &conn,
             t.debit_account.clone(),
-            t.commodity.clone(),
+            t.commodity_unit.clone(),
         )
         .await?;
 
@@ -90,7 +90,7 @@ pub async fn put_add(
             Box::new(state.tb.clone()),
             &conn,
             t.credit_account.clone(),
-            t.commodity.clone(),
+            t.commodity_unit.clone(),
         )
         .await?;
 
