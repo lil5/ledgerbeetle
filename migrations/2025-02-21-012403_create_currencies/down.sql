@@ -1,7 +1,10 @@
 ALTER TABLE accounts
-DROP CONSTRAINT fk_currencies;
+DROP CONSTRAINT fk_commodities;
 
 ALTER TABLE accounts
-DROP COLUMN currencies_id;
+DROP COLUMN commodities_id;
 
-DROP TABLE currencies;
+DROP TABLE commodities;
+
+ALTER TABLE accounts
+DROP CONSTRAINT uk_accounts_name_commodities_unique;

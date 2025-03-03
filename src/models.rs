@@ -1,12 +1,10 @@
-use crate::{hledger, http_err};
-use axum_macros::debug_handler;
+use crate::{http_err, responses, tb_utils::u128};
 use deadpool_diesel::postgres::Object;
-use diesel::{dsl::Like, insert_into, prelude::*, result::Error::NotFound};
-use itertools::Itertools;
-use regex::Regex;
-use std::sync::{Arc, LazyLock};
+use diesel::{prelude::*, result::Error::NotFound};
+
+use std::sync::Arc;
 use tigerbeetle_unofficial as tb;
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::RwLock;
 use validator::ValidationError;
 
 pub static TB_MAX_BATCH_SIZE: u32 = 8190;
@@ -17,7 +15,8 @@ pub static TB_MAX_BATCH_SIZE: u32 = 8190;
 pub struct Account {
     pub id: i64,
     pub name: String,
-    pub tb_id: i64,
+    pub tb_id: String,
+    pub commodities_id: i32,
 }
 
 pub async fn list_all_accounts(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
@@ -37,25 +36,25 @@ pub async fn find_or_create_account<'a>(
     conn: &Object,
     account_name: String,
     unit: String,
-) -> http_err::HttpResult<(Account, Currencies)> {
+) -> http_err::HttpResult<(Account, Commodities)> {
     use crate::schema::accounts::dsl::*;
 
     let account_name_clone = account_name.clone();
+    let commodity = find_or_create_commodity(conn, unit.clone()).await?;
+    let commodity_id_clone = commodity.id;
     let first_account = conn
-        .interact(|conn| {
+        .interact(move |conn| {
             return accounts
                 .select(Account::as_select())
                 .filter(name.eq(account_name))
+                .filter(commodities_id.eq(commodity_id_clone))
                 .first(conn);
         })
         .await
         .map_err(http_err::internal_error)?;
 
     match first_account {
-        Ok(v) => {
-            let currency = find_or_create_currency(conn, unit.clone()).await?;
-            Ok((v, currency))
-        }
+        Ok(v) => Ok((v, commodity)),
         Err(err) => {
             if err != NotFound {
                 Err(http_err::internal_error(err))
@@ -71,24 +70,27 @@ pub async fn find_or_create_account<'a>(
 #[diesel(table_name =  crate::schema::accounts)]
 pub struct NewAccount<'a> {
     pub name: &'a str,
-    pub currencies_id: &'a i32,
+    pub commodities_id: &'a i32,
+    pub tb_id: &'a str,
 }
 async fn create_account<'a>(
     conn: &Object,
     tb: Box<Arc<RwLock<tb::Client>>>,
     account_name: String,
     unit: String,
-) -> Result<(Account, Currencies), http_err::HttpErr> {
+) -> Result<(Account, Commodities), http_err::HttpErr> {
     // return Err(http_err::internal_error(ValidationError::new("stuff")));
-    let currency = find_or_create_currency(&conn, unit).await?;
+    let commodity = find_or_create_commodity(&conn, unit).await?;
     let account_name_clone = account_name.clone();
     let account_type = AccountType::read(account_name.as_str()).map_err(http_err::bad_error)?;
+    let id = tb::id();
     println!("creating account_name: {}", account_name);
     let account = conn
         .interact(move |conn| {
             let new_account = NewAccount {
                 name: account_name_clone.as_str(),
-                currencies_id: &currency.id,
+                commodities_id: &commodity.id,
+                tb_id: &u128::to_hex_string(id),
             };
             diesel::insert_into(crate::schema::accounts::table)
                 .values(&new_account)
@@ -111,12 +113,8 @@ async fn create_account<'a>(
         flags
     };
 
-    let new_tb_account = tb::Account::new(
-        account.tb_id.try_into().unwrap(),
-        currency.tb_ledger.try_into().unwrap(),
-        1,
-    )
-    .with_flags(flags);
+    let new_tb_account =
+        tb::Account::new(id, commodity.tb_ledger.try_into().unwrap(), 1).with_flags(flags);
 
     tb.read()
         .await
@@ -124,7 +122,7 @@ async fn create_account<'a>(
         .await
         .map_err(http_err::internal_error)?;
 
-    Ok((account, currency))
+    Ok((account, commodity))
 }
 
 pub async fn find_accounts_re(
@@ -153,7 +151,7 @@ pub async fn find_accounts_re(
 
 pub async fn find_accounts_by_tb_ids(
     conn: &Object,
-    tb_ids: Vec<i64>,
+    tb_ids: Vec<String>,
 ) -> http_err::HttpResult<Vec<Account>> {
     use crate::schema::accounts::dsl;
 
@@ -169,56 +167,57 @@ pub async fn find_accounts_by_tb_ids(
 }
 
 #[derive(Queryable, Selectable)]
-#[diesel(table_name = crate::schema::currencies)]
+#[diesel(table_name = crate::schema::commodities)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Currencies {
+pub struct Commodities {
     pub id: i32,
     pub tb_ledger: i32,
     pub unit: String,
+    pub decimal_place: i32,
 }
 
-async fn find_or_create_currency(
+async fn find_or_create_commodity(
     conn: &Object,
-    unit: String,
-) -> Result<Currencies, http_err::HttpErr> {
-    use crate::schema::currencies::dsl;
-    let unit_clone = unit.clone();
-    let first_currency = conn
+    commodity_unit: String,
+) -> Result<Commodities, http_err::HttpErr> {
+    use crate::schema::commodities::dsl::*;
+    let unit_clone = commodity_unit.clone();
+    let first_commodity = conn
         .interact(|conn| {
-            dsl::currencies
-                .select(Currencies::as_select())
-                .filter(dsl::unit.eq(unit))
+            commodities
+                .select(Commodities::as_select())
+                .filter(unit.eq(commodity_unit))
                 .first(conn)
         })
         .await
         .map_err(http_err::teapot_error)?;
 
-    match first_currency {
+    match first_commodity {
         Ok(v) => Ok(v),
         Err(err) => {
-            Err(http_err::teapot_error(err))
-            // if err != NotFound {
-            // } else {
-            //     println!("{}", err);
-            //     create_currency(&conn, unit_clone).await
-            // }
+            if err != NotFound {
+                println!("{}", err);
+                Err(http_err::internal_error(err))
+            } else {
+                create_commodity(&conn, unit_clone).await
+            }
         }
     }
 }
 
 #[derive(Insertable)]
-#[diesel(table_name =  crate::schema::currencies)]
-pub struct NewCurrency<'a> {
+#[diesel(table_name =  crate::schema::commodities)]
+pub struct Newcommodity<'a> {
     pub unit: &'a str,
 }
-async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, http_err::HttpErr> {
+async fn create_commodity(conn: &Object, unit: String) -> Result<Commodities, http_err::HttpErr> {
     conn.interact(move |conn| {
-        let new_currency = NewCurrency {
+        let new_commodity = Newcommodity {
             unit: unit.as_str(),
         };
-        return diesel::insert_into(crate::schema::currencies::table)
-            .values(&new_currency)
-            .returning(Currencies::as_returning())
+        return diesel::insert_into(crate::schema::commodities::table)
+            .values(&new_commodity)
+            .returning(Commodities::as_returning())
             .get_result(conn)
             .map_err(http_err::internal_error);
     })
@@ -226,22 +225,23 @@ async fn create_currency(conn: &Object, unit: String) -> Result<Currencies, http
     .map_err(http_err::internal_error)?
 }
 
-pub async fn list_all_currencie_units(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
+pub async fn list_all_commodity_units(conn: &Object) -> Result<Vec<String>, http_err::HttpErr> {
     conn.interact(move |conn| {
-        use crate::schema::currencies::dsl;
-        return dsl::currencies
-            .select(dsl::unit)
+        use crate::schema::commodities::dsl::*;
+        return commodities
+            .select(unit)
+            .order(unit)
             .load(conn)
             .map_err(http_err::internal_error);
     })
     .await
     .map_err(http_err::internal_error)?
 }
-pub async fn list_all_currencies(conn: &Object) -> Result<Vec<Currencies>, http_err::HttpErr> {
+pub async fn list_all_commodities(conn: &Object) -> Result<Vec<Commodities>, http_err::HttpErr> {
     conn.interact(move |conn| {
-        use crate::schema::currencies::dsl;
-        return dsl::currencies
-            .select(dsl::currencies::all_columns())
+        use crate::schema::commodities::dsl::*;
+        return commodities
+            .select(commodities::all_columns())
             .load(conn)
             .map_err(http_err::internal_error);
     })
@@ -264,7 +264,7 @@ pub enum AccountType {
 
 impl AccountType {
     fn read(v: &str) -> Result<AccountType, ValidationError> {
-        hledger::RE_ACCOUNT
+        responses::RE_ACCOUNT
             .captures(v)
             .and_then(|v| v.get(1))
             .and_then(|v| {

@@ -12,95 +12,23 @@ put {
 
 body:json {
   {
-    "tcode": "",
-    "tcomment": "",
-    "tdate": "2025-02-24",
-    "tdate2": null,
-    "tdescription": "0",
-    "tindex": 1,
-    "tpostings": [
+    "fullDate2": {{fullDate2}},
+    "transactions": [
       {
-        "paccount": "assets:bank",
-        "pamount": [
-          {
-            "acommodity": "",
-            "acost": null,
-            "aquantity": {
-              "decimalMantissa": 200,
-              "decimalPlaces": 0,
-              "floatingPoint": 200
-            },
-            "astyle": {
-              "ascommodityside": "L",
-              "ascommodityspaced": false,
-              "asdecimalmark": ".",
-              "asdigitgroups": null,
-              "asprecision": 0,
-              "asrounding": "NoRounding"
-            }
-          }
-        ],
-        "pbalanceassertion": null,
-        "pcomment": "",
-        "pdate": null,
-        "pdate2": null,
-        "poriginal": null,
-        "pstatus": "Unmarked",
-        "ptags": [],
-        "ptransaction_": "{{ptransaction}}",
-        "ptype": "RegularPosting"
-      },
-      {
-        "paccount": "revenues:work",
-        "pamount": [
-          {
-            "acommodity": "",
-            "acost": null,
-            "aquantity": {
-              "decimalMantissa": -200,
-              "decimalPlaces": 0,
-              "floatingPoint": -200
-            },
-            "astyle": {
-              "ascommodityside": "L",
-              "ascommodityspaced": false,
-              "asdecimalmark": ".",
-              "asdigitgroups": null,
-              "asprecision": 0,
-              "asrounding": "NoRounding"
-            }
-          }
-        ],
-        "pbalanceassertion": null,
-        "pcomment": "",
-        "pdate": null,
-        "pdate2": null,
-        "poriginal": null,
-        "pstatus": "Unmarked",
-        "ptags": [],
-        "ptransaction_": "{{ptransaction}}",
-        "ptype": "RegularPosting"
+        "code": 100,
+        "commodity": "$",
+        "relatedId": "{{relatedId}}",
+        "debitAccount": "assets:bank",
+        "creditAccount": "revenues:work",
+        "amount": 1
       }
-    ],
-    "tprecedingcomment": "",
-    "tsourcepos": [
-      {
-        "sourceColumn": 1,
-        "sourceLine": 2,
-        "sourceName": "/Users/lil5/Projects/climatecleanup/hledger_tb/.hledger.journal"
-      },
-      {
-        "sourceColumn": 1,
-        "sourceLine": 5,
-        "sourceName": "/Users/lil5/Projects/climatecleanup/hledger_tb/.hledger.journal"
-      }
-    ],
-    "tstatus": "Unmarked",
-    "ttags": []
+    ]
   }
 }
 
 script:pre-request {
   const id = ()=>Math.floor(new Date().getTime() / 1000).toString(16)
-  bru.setEnvVar("ptransaction",id())
+  bru.setEnvVar("relatedId",id());
+  bru.setEnvVar("transferId",id());
+  bru.setEnvVar("fullDate2",Math.floor(new Date().getTime() / 1000));
 }

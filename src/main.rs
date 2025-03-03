@@ -1,28 +1,22 @@
-use std::{
-    ops::Deref,
-    rc::Rc,
-    sync::{Arc, LazyLock},
-};
-mod hledger;
+use std::sync::{Arc, LazyLock};
 mod http_err;
 mod models;
+mod responses;
 
 mod routes;
 mod schema;
 mod tb_utils;
 
 use axum::{
-    http::StatusCode,
-    routing::{get, post, put},
-    Extension, Router,
+    routing::{get, put},
+    Router,
 };
-use axum_test::TestServer;
 use deadpool_diesel::postgres::Pool;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 use regex::Regex;
 use tigerbeetle_unofficial as tb;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 extern crate clap;
 
 // this embeds the migrations into the application binary
@@ -94,6 +88,10 @@ async fn router() -> Router {
             "/accounttransactions/{filter}",
             get(routes::get_transactions),
         )
+        .route(
+            "/accountbalances/{filter}",
+            get(routes::get_account_balances),
+        )
         .route("/commodities", get(routes::get_commodities))
         .route("/version", get(routes::get_version))
         .with_state(app_state);
@@ -102,6 +100,8 @@ async fn router() -> Router {
 
 #[tokio::test]
 async fn e2e() {
+    use axum::http::StatusCode;
+    use axum_test::TestServer;
     // setup dot env
     dotenv().ok();
 
@@ -116,13 +116,13 @@ async fn e2e() {
 
     {
         let response = server.get("/accountnames").await;
-        let json = response.json::<hledger::ResponseAccountNames>();
+        let json = response.json::<responses::ResponseAccountNames>();
         assert!(json.iter().any(|v| v.starts_with("assets:")));
     }
-    
+
     {
         let response = server.get("/commodities").await;
-        let json = response.json::<hledger::ResponseCommodities>();
+        let json = response.json::<responses::ResponseCommodities>();
         assert!(json.iter().any(|v| v == ""));
     }
 }

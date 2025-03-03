@@ -1,2 +1,2 @@
-ALTER TABLE currencies
-ADD CONSTRAINT currencies_unit_unique UNIQUE (unit);
+ALTER TABLE commodities
+ADD CONSTRAINT uk_commodities_unit UNIQUE (unit);

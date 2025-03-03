@@ -1,2 +1,2 @@
-ALTER TABLE currencies
-DROP CONSTRAINT currencies_unit_unique;
+ALTER TABLE commodities
+DROP CONSTRAINT uk_commodities_unit;

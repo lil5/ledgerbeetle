@@ -4,31 +4,24 @@ diesel::table! {
     accounts (id) {
         id -> Int8,
         name -> Varchar,
-        tb_id -> Int8,
-        currencies_id -> Nullable<Int4>,
+        #[max_length = 31]
+        tb_id -> Varchar,
+        commodities_id -> Int4,
     }
 }
 
 diesel::table! {
-    currencies (id) {
+    commodities (id) {
         id -> Int4,
         tb_ledger -> Int4,
         unit -> Text,
+        decimal_place -> Int4,
     }
 }
 
-diesel::table! {
-    transfer_details (id) {
-        id -> Int8,
-        tb_id -> Text,
-        description -> Text,
-    }
-}
-
-diesel::joinable!(accounts -> currencies (currencies_id));
+diesel::joinable!(accounts -> commodities (commodities_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
-    currencies,
-    transfer_details,
+    commodities,
 );
