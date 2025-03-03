@@ -100,13 +100,13 @@ async fn create_account<'a>(
         .map_err(http_err::internal_error)??;
 
     let flags = {
-        let mut flags = tb::account::Flags::empty();
+        let mut flags = tb::account::Flags::HISTORY;
         let (disallow_red, disallow_green) = account_type.must_not_exceed();
         if disallow_green {
-            flags &= tb::account::Flags::DEBITS_MUST_NOT_EXCEED_CREDITS
+            flags |= tb::account::Flags::DEBITS_MUST_NOT_EXCEED_CREDITS
         }
         if disallow_red {
-            flags &= tb::account::Flags::CREDITS_MUST_NOT_EXCEED_DEBITS
+            flags |= tb::account::Flags::CREDITS_MUST_NOT_EXCEED_DEBITS
         }
         flags
     };

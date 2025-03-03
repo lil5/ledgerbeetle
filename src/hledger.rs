@@ -118,16 +118,16 @@ impl Transaction {
         .ok_or(anyhow!("tigerbeetle should return a timestamp"))?;
         let tdate2 = DateTime::from_timestamp(transfer.user_data_64() as i64, 0);
 
-        let postings = vec![transfer.credit_account_id(), transfer.debit_account_id()]
+        let postings = vec![transfer.debit_account_id(), transfer.credit_account_id()]
             .iter()
             .enumerate()
             .map(|(index, account_id)| {
                 let amount = {
                     let amount = transfer.amount() as i64;
                     if index == 0 {
-                        amount.neg()
-                    } else {
                         amount
+                    } else {
+                        amount.neg()
                     }
                 };
                 let amount = Amount::from_tb(amount, currency.unit.clone(), amount_style.clone());

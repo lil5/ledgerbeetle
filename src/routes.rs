@@ -110,16 +110,16 @@ pub async fn put_add(
     for (index, transaction) in payload.iter().enumerate() {
         let tpostings = transaction.tpostings.clone();
         assert_eq!(tpostings.len() % 2, 0);
-        let chunks: Vec<Vec<Posting>> = tpostings
+        for chunk in tpostings
             .into_iter()
             .chunks(2)
             .to_owned()
             .into_iter()
             .map(|chunk| chunk.collect::<Vec<Posting>>())
-            .collect();
-        for chunk in chunks.iter() {
-            let posting_debit = chunk.get(1).unwrap();
-            let posting_credit = chunk.get(0).unwrap();
+            .collect::<Vec<Vec<Posting>>>()
+        {
+            let posting_debit = chunk.get(0).unwrap();
+            let posting_credit = chunk.get(1).unwrap();
 
             let first_pamount = posting_credit.pamount.iter().nth(0).unwrap();
             let (account_debit, _) = models::find_or_create_account(
@@ -153,10 +153,12 @@ pub async fn put_add(
             let user_data_128 = tb_utils::u128::from_hex_string(&transaction.tdescription);
 
             assert_ne!(account_credit.tb_id, account_debit.tb_id);
-            println!("accounts: {} {}", account_credit.tb_id, account_debit.tb_id);
 
             let id = posting_credit.ptransaction.as_str();
-            println!("transfer id: {id}");
+            println!(
+                "Transfer {id} debit in {} to credit from {}",
+                account_debit.name, account_credit.name,
+            );
             let mut tranfer = tb::Transfer::new(from_hex_string(id))
                 .with_amount(
                     posting_debit
@@ -218,6 +220,10 @@ pub async fn get_transactions(
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
 
     let accounts: Vec<Account> = find_accounts_re(&conn, filter).await?;
+    println!(
+        "accounts found: {}",
+        accounts.iter().map(|a| a.id).join(", ")
+    );
     let currencies = list_all_currencies(&conn).await?;
     let currencies = currencies
         .iter()
@@ -229,13 +235,21 @@ pub async fn get_transactions(
         })
         .collect::<HashMap<_, _>>();
 
+    println!(
+        "currencies found: '{}'",
+        currencies.iter().map(|a| a.1 .0.unit.clone()).join(", ")
+    );
+
     // collect all transfers in a hashmap
     let mut transfers: HashMap<u128, tb::Transfer> = HashMap::new();
     for account in accounts.iter() {
         // get transfers per account
         let account_tb_id = account.tb_id.try_into().unwrap();
 
-        let filter = tb::core::account::Filter::new(account_tb_id, u32::MAX);
+        let flags =
+            tb::core::account::FilterFlags::DEBITS | tb::core::account::FilterFlags::CREDITS;
+        let filter = tb::core::account::Filter::new(account_tb_id, 890).with_flags(flags);
+        println!("getting account {account_tb_id} transfers");
         let transfers_data: Vec<tb::core::Transfer> = state
             .tb
             .read()
@@ -243,10 +257,11 @@ pub async fn get_transactions(
             .get_account_transfers(Box::new(filter))
             .await
             .map_err(http_err::internal_error)?;
-        for transfer in transfers_data.iter() {
-            let id = transfer.id();
+        println!("found transfer data len {}", transfers_data.len());
+        for transfer_data in transfers_data.iter() {
+            let id = transfer_data.id();
             if !transfers.contains_key(&id) {
-                transfers.insert(id, *transfer);
+                transfers.insert(id, *transfer_data);
             }
         }
     }
@@ -257,7 +272,10 @@ pub async fn get_transactions(
         .map(|a| (a.tb_id as u128, a))
         .collect::<HashMap<u128, &Account>>();
     let mut missing_account_tb_ids: Vec<i64> = Vec::new();
-    for transfer in transfers.values() {
+    for transfer in transfers
+        .values()
+        .sorted_by(|a, b| Ord::cmp(&a.timestamp(), &b.timestamp()))
+    {
         for account_tb_id in vec![transfer.credit_account_id(), transfer.debit_account_id()].iter()
         {
             if !accounts.contains_key(account_tb_id) {

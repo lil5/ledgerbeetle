@@ -19,6 +19,10 @@ diesel = { version = "2", features = ["postgres"] }
 diesel_migrations = "2.2.0"
 dotenvy = "0.15.7"
 itertools = "0.14.0"
+log = { version = "0.4", features = [
+   "max_level_debug",
+   "release_max_level_warn",
+] }
 regex = "1.11.1"
 serde = "1.0.218"
 tigerbeetle-unofficial = "=0.8.0"

@@ -11,14 +11,16 @@ where
 
 pub fn bad_error<E>(err: E) -> HttpErr
 where
-    E: ToString,
+    E: ToString + std::fmt::Debug + std::fmt::Display,
 {
+    log::warn!("{err}");
     (StatusCode::BAD_REQUEST, err.to_string())
 }
 
 pub fn teapot_error<E>(err: E) -> HttpErr
 where
-    E: ToString,
+    E: ToString + std::fmt::Debug + std::fmt::Display,
 {
+    log::warn!("{err}");
     (StatusCode::IM_A_TEAPOT, err.to_string())
 }
