@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       "/accountnames": base_api,
       "/accounttransactions": base_api,
+      "/accountbalances": base_api,
     },
   },
 });

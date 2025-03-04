@@ -1,9 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
-import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
-
-import { useAccountNames } from "@/api/accountnames";
-import DefaultLayout from "@/layouts/default";
+import { useMemo, useState } from "react";
 import {
+  Card,
   Listbox,
   ListboxItem,
   Pagination,
@@ -15,8 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/react";
-import { Pamount, useAccountTransactions } from "@/api/accounttransactions";
 import Decimal from "decimal.js";
+import dayjs from "dayjs";
+
+import { useAccountNames } from "@/api/accountnames";
+import DefaultLayout from "@/layouts/default";
+import { useAccountTransactions } from "@/api/accounttransactions";
+import { useAccountBalances } from "@/api/accountbalances";
 
 export default function IndexPage() {
   const queryAccountNames = useAccountNames();
@@ -32,27 +34,36 @@ export default function IndexPage() {
   const selectedAccountNamesRe = useMemo<string | undefined>(() => {
     if (selectedAccountNames.size == 0) return undefined;
 
-    return [...selectedAccountNames].join("|");
+    return [...selectedAccountNames].map((s) => s + "**").join("|");
   }, [selectedAccountNames]);
 
   return (
     <DefaultLayout>
-      <div className="flex w-full flex-wrap md:flex-nowrap gap-4">
-        <Listbox
-          isVirtualized
-          className="max-w-xs"
-          items={items}
-          label={"Select from 1000 items"}
-          selectedKeys={selectedAccountNames}
-          selectionMode="multiple"
-          virtualization={{
-            maxListboxHeight: 400,
-            itemHeight: 40,
-          }}
-          onSelectionChange={setSelectedAccountNames as any}
-        >
-          {(item) => <ListboxItem key={item.text}>{item.text}</ListboxItem>}
-        </Listbox>
+      <div className="flex  justify-between w-full flex-wrap md:flex-nowrap gap-4">
+        <Card className="w-1/2 sm:w-1/3 p-2">
+          <h1 className="mx-2">Select one or many accounts</h1>
+          <Listbox
+            isVirtualized
+            className="w-full h-60"
+            items={items}
+            label={"Select from 1000 items"}
+            selectedKeys={selectedAccountNames}
+            selectionMode="multiple"
+            virtualization={{
+              maxListboxHeight: 400,
+              itemHeight: 40,
+            }}
+            onSelectionChange={setSelectedAccountNames as any}
+          >
+            {(item) => <ListboxItem key={item.text}>{item.text}</ListboxItem>}
+          </Listbox>
+        </Card>
+
+        <div>
+          {selectedAccountNamesRe ? (
+            <BalanceTable selectedAccounts={selectedAccountNamesRe} />
+          ) : null}
+        </div>
       </div>
       <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
         {selectedAccountNamesRe ? (
@@ -63,6 +74,34 @@ export default function IndexPage() {
   );
 }
 
+function BalanceTable(props: { selectedAccounts: string }) {
+  const { data: items, isLoading } = useAccountBalances(props.selectedAccounts);
+
+  const columns = [
+    { key: "account", label: "Account" },
+    { key: "balance", label: "Balance" },
+  ];
+
+  if (isLoading) return <Spinner />;
+
+  return (
+    <Table aria-label="Example table with dynamic content">
+      <TableHeader columns={columns}>
+        {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
+      </TableHeader>
+      <TableBody items={items}>
+        {(item) => (
+          <TableRow key={item.accountName + item.commodityUnit}>
+            <TableCell>{item.accountName}</TableCell>
+            <TableCell className="text-right font-mono">
+              <Numberify amount={item.amount} t={item} />
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+}
 function TransactionsTable(props: { selectedAccounts: string }) {
   const { data: items, isLoading } = useAccountTransactions(
     props.selectedAccounts,
@@ -71,28 +110,9 @@ function TransactionsTable(props: { selectedAccounts: string }) {
   const columns = [
     { key: "date", label: "Date" },
     { key: "description", label: "Description" },
-    { key: "account", label: "Account" },
+    { key: "accounts", label: "Accounts In/out" },
     { key: "amount", label: "Amount" },
   ];
-
-  const Numberify = useCallback(
-    (pamount: Pamount) => {
-      let n = Decimal(pamount.aquantity.decimalMantissa);
-
-      if (pamount.aquantity.decimalPlaces != 0) {
-        n = n.divToInt(Decimal(pamount.aquantity.decimalPlaces));
-      }
-
-      let str = n.toFixed(pamount.aquantity.decimalPlaces);
-
-      if (pamount.acommodity) {
-        str = str + " " + pamount.astyle.asdecimalmark;
-      }
-
-      return str;
-    },
-    [items],
-  );
 
   const [page, setPage] = useState(1);
   const rowsPerPage = 4;
@@ -131,26 +151,30 @@ function TransactionsTable(props: { selectedAccounts: string }) {
       </TableHeader>
       <TableBody items={paginatedItems}>
         {(item) => (
-          <TableRow key={item.tindex}>
-            <TableCell>{item.tdate}</TableCell>
+          <TableRow key={item.transferId}>
+            <TableCell>{dayjs.unix(item.fullDate).format()}</TableCell>
             <TableCell>
-              <ol>
-                {item.tpostings.map((v, i) => (
-                  <li key={i}>{v.ptransaction_}</li>
-                ))}
-              </ol>
+              <dl>
+                <dt>Transfer ID:</dt>
+                <dd>{item.transferId}</dd>
+                <dt>Related ID:</dt>
+                <dd>{item.relatedId}</dd>
+                <dt>Code:</dt>
+                <dd>{item.code}</dd>
+              </dl>
             </TableCell>
             <TableCell>
               <ol>
-                {item.tpostings.map((v, i) => (
-                  <li key={i}>{v.paccount}</li>
-                ))}
+                <li>{item.debitAccount}</li>
+                <li>{item.creditAccount}</li>
               </ol>
             </TableCell>
             <TableCell>
               <ol className="text-right font-mono">
-                {item.tpostings.map((v) => (
-                  <li key={v.pcomment}>{Numberify(v.pamount.at(0)!)}</li>
+                {[item.debitAmount, item.creditAmount].map((v, i) => (
+                  <li key={i}>
+                    <Numberify amount={v} t={item} />
+                  </li>
                 ))}
               </ol>
             </TableCell>
@@ -159,4 +183,23 @@ function TransactionsTable(props: { selectedAccounts: string }) {
       </TableBody>
     </Table>
   );
+}
+
+function Numberify(props: {
+  t: { commodityDecimal: number; commodityUnit: string };
+  amount: number;
+}) {
+  let n = Decimal(props.amount);
+
+  if (props.t.commodityDecimal != 0) {
+    n = n.div(Math.pow(10, props.t.commodityDecimal));
+  }
+
+  let str = n.toFixed(props.t.commodityDecimal);
+
+  if (props.t.commodityUnit) {
+    str = str + " " + props.t.commodityUnit;
+  }
+
+  return str;
 }

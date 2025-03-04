@@ -23,7 +23,9 @@ pub async fn list_all_accounts(conn: &Object) -> Result<Vec<String>, http_err::H
     use crate::schema::accounts::dsl::*;
     conn.interact(|conn| {
         return accounts
+            .distinct()
             .select(name)
+            .order(name)
             .load::<String>(conn)
             .map_err(http_err::internal_error);
     })
@@ -141,7 +143,7 @@ pub async fn find_accounts_re(
                 q = q.or_filter(name.like(f));
             }
         }
-        let q = q.select(Account::as_select());
+        let q = q.select(Account::as_select()).order((name, commodities_id));
         q.get_results::<Account>(conn)
             .map_err(http_err::internal_error)
     })
