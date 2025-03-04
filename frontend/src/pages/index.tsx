@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   Card,
+  Input,
   Listbox,
   ListboxItem,
   Pagination,
@@ -14,6 +15,7 @@ import {
 } from "@heroui/react";
 import Decimal from "decimal.js";
 import dayjs from "dayjs";
+import { useDebounceValue } from "usehooks-ts";
 
 import { useAccountNames } from "@/api/accountnames";
 import DefaultLayout from "@/layouts/default";
@@ -22,6 +24,8 @@ import { useAccountBalances } from "@/api/accountbalances";
 
 export default function IndexPage() {
   const queryAccountNames = useAccountNames();
+  const [search, setSearch] = useState("");
+  const [searchDebounce] = useDebounceValue(search, 1300, { trailing: true });
   const [selectedAccountNames, setSelectedAccountNames] = useState(
     new Set([] as string[]),
   );
@@ -31,16 +35,17 @@ export default function IndexPage() {
     return queryAccountNames.data.map((text) => ({ text }));
   }, [queryAccountNames]);
 
-  const selectedAccountNamesRe = useMemo<string | undefined>(() => {
-    if (selectedAccountNames.size == 0) return undefined;
+  const _setSelectedAccountNames = (s: Set<string>) => {
+    setSelectedAccountNames(s);
 
-    return [...selectedAccountNames].map((s) => s + "**").join("|");
-  }, [selectedAccountNames]);
+    setSearch([...s].map((s) => s + "**").join("|"));
+  };
 
   return (
     <DefaultLayout>
       <div className="flex  justify-between w-full flex-wrap md:flex-nowrap gap-4">
         <Card className="w-1/2 sm:w-1/3 p-2">
+          <Input value={search} onValueChange={setSearch} />
           <h1 className="mx-2">Select one or many accounts</h1>
           <Listbox
             isVirtualized
@@ -53,21 +58,21 @@ export default function IndexPage() {
               maxListboxHeight: 400,
               itemHeight: 40,
             }}
-            onSelectionChange={setSelectedAccountNames as any}
+            onSelectionChange={_setSelectedAccountNames as any}
           >
             {(item) => <ListboxItem key={item.text}>{item.text}</ListboxItem>}
           </Listbox>
         </Card>
 
         <div>
-          {selectedAccountNamesRe ? (
-            <BalanceTable selectedAccounts={selectedAccountNamesRe} />
+          {searchDebounce ? (
+            <BalanceTable selectedAccounts={searchDebounce} />
           ) : null}
         </div>
       </div>
       <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-        {selectedAccountNamesRe ? (
-          <TransactionsTable selectedAccounts={selectedAccountNamesRe} />
+        {searchDebounce ? (
+          <TransactionsTable selectedAccounts={searchDebounce} />
         ) : null}
       </section>
     </DefaultLayout>
@@ -115,7 +120,7 @@ function TransactionsTable(props: { selectedAccounts: string }) {
   ];
 
   const [page, setPage] = useState(1);
-  const rowsPerPage = 4;
+  const rowsPerPage = 20;
 
   const { paginatedItems, pages } = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -133,7 +138,11 @@ function TransactionsTable(props: { selectedAccounts: string }) {
     <Table
       aria-label="Example table with dynamic content"
       bottomContent={
-        <div className="flex w-full justify-center">
+        <div
+          className={"flex w-full justify-center".concat(
+            pages > 1 ? "" : " hidden",
+          )}
+        >
           <Pagination
             isCompact
             showControls
@@ -154,7 +163,7 @@ function TransactionsTable(props: { selectedAccounts: string }) {
           <TableRow key={item.transferId}>
             <TableCell>{dayjs.unix(item.fullDate).format()}</TableCell>
             <TableCell>
-              <dl>
+              <dl className="grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
                 <dt>Transfer ID:</dt>
                 <dd>{item.transferId}</dd>
                 <dt>Related ID:</dt>

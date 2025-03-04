@@ -12,6 +12,7 @@ export default defineConfig({
       "/accountnames": base_api,
       "/accounttransactions": base_api,
       "/accountbalances": base_api,
+      "/add": base_api,
     },
   },
 });

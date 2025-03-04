@@ -1,5 +1,6 @@
 import type { NavigateOptions } from "react-router-dom";
 
+import { I18nProvider } from "@react-aria/i18n";
 import { HeroUIProvider } from "@heroui/system";
 import { useHref, useNavigate } from "react-router-dom";
 
@@ -14,7 +15,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
   return (
     <HeroUIProvider navigate={navigate} useHref={useHref}>
-      {children}
+      <I18nProvider locale="nl-NL">{children}</I18nProvider>
     </HeroUIProvider>
   );
 }
