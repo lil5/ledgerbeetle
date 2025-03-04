@@ -286,15 +286,15 @@ impl AccountType {
             })
     }
 
-    fn to_string<'a>(self) -> &'a str {
-        match self {
-            AccountType::Assets => ACCOUNT_TYPE_ASSETS,
-            AccountType::Liabilities => ACCOUNT_TYPE_LIABILITIES,
-            AccountType::Equity => ACCOUNT_TYPE_EQUITY,
-            AccountType::Revenues => ACCOUNT_TYPE_REVENUES,
-            AccountType::Expenses => ACCOUNT_TYPE_EXPENSES,
-        }
-    }
+    // fn to_string<'a>(self) -> &'a str {
+    //     match self {
+    //         AccountType::Assets => ACCOUNT_TYPE_ASSETS,
+    //         AccountType::Liabilities => ACCOUNT_TYPE_LIABILITIES,
+    //         AccountType::Equity => ACCOUNT_TYPE_EQUITY,
+    //         AccountType::Revenues => ACCOUNT_TYPE_REVENUES,
+    //         AccountType::Expenses => ACCOUNT_TYPE_EXPENSES,
+    //     }
+    // }
 
     fn must_not_exceed(self) -> (bool, bool) {
         let disallow_red = match self {

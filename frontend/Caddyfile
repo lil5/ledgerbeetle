@@ -1,0 +1,20 @@
+:8080 {
+	@proxypaths {
+		path /accountnames
+		path /accounttransactions
+		path /accountbalances
+		path /add
+	}
+	handle @proxypaths {
+		reverse_proxy be:3000
+	}
+
+	handle {
+		root * /srv/
+		# requests with Accept-Encoding get automatically gzipped
+		encode gzip
+		# try to serve the file, if it doesn't exist, then serve index.html
+		try_files {path} /index.html
+		file_server
+	}
+}

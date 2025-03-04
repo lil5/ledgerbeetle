@@ -3,7 +3,7 @@ use std::time::UNIX_EPOCH;
 use std::{ops::Neg, sync::LazyLock};
 
 use anyhow::anyhow;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use regex::Regex;
 use serde::*;
 use validator::Validate;
@@ -131,22 +131,22 @@ impl Transaction {
         })
     }
 
-    pub fn to_hledger_string(&self) -> String {
-        let date = DateTime::<Utc>::from_timestamp(self.full_date, 0).unwrap();
-        format!(
-            "{} * transfer {} ; code {} related {}\n    {: >12} {: >10} {: <5}\n    {: >12} {: >10} {: <5}\n",
-            date.to_rfc3339(),
-            self.transfer_id,
-            self.code,
-            self.related_id,
-            self.debit_account,
-            self.debit_amount,
-            self.commodity_unit,
-            self.credit_account,
-            self.credit_amount,
-            self.commodity_unit,
-        )
-    }
+    // pub fn to_hledger_string(&self) -> String {
+    //     let date = DateTime::<Utc>::from_timestamp(self.full_date, 0).unwrap();
+    //     format!(
+    //         "{} * transfer {} ; code {} related {}\n    {: >12} {: >10} {: <5}\n    {: >12} {: >10} {: <5}\n",
+    //         date.to_rfc3339(),
+    //         self.transfer_id,
+    //         self.code,
+    //         self.related_id,
+    //         self.debit_account,
+    //         self.debit_amount,
+    //         self.commodity_unit,
+    //         self.credit_account,
+    //         self.credit_amount,
+    //         self.commodity_unit,
+    //     )
+    // }
 }
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]

@@ -1,18 +1,18 @@
 default:
 	@grep '^[^#[:space:].].*:' Makefile
 
-docker-start:
-	docker compose up -d
+dev-docker-start:
+	docker compose -f docker-compose.dev.yml up -d
+dev-docker-stop:
+	docker compose -f docker-compose.dev.yml stop
 
-docker-stop:
-	docker compose stop
-
-setup:
-	touch .hledger.journal
-
-dev: start
-start:
+dev-bin-start:
 	cargo run
 
-hledger-start:
-	hledger-web --serve --allow=edit -f .hledger.journal
+prod-start:
+	docker compose -f docker-compose.prod.yml up -d
+prod-stop:
+	docker compose -f docker-compose.prod.yml stop
+
+dev: dev-docker-start dev-bin-start
+start: dev

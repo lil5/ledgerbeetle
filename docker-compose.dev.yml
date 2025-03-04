@@ -1,8 +1,8 @@
-name: hledger_tb
+name: ledgerbeetle_dev
 
 services:
   db:
-    image: postgres:alpine
+    image: postgres:15-alpine
     # set shared memory limit when using docker-compose
     shm_size: 128mb
     environment:
