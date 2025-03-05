@@ -19,6 +19,9 @@ services:
       context: .
     env_file:
       - /dev/null
+    depends_on:
+      - db
+      - tb
     security_opt:
       - seccomp:unconfined
     environment:
