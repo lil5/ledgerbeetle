@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+
 use std::sync::{Arc, LazyLock};
 mod http_err;
 mod models;
@@ -23,7 +25,7 @@ extern crate clap;
 // the migration path is relative to the `CARGO_MANIFEST_DIR`
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 static RE_ENV_TRUE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(1|true|True|TRUE)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^(1|true|True|TRUE)$").expect("invalid regex"));
 
 #[derive(Clone)]
 pub struct AppState {
@@ -39,8 +41,12 @@ async fn main() {
 
     let app = router().await;
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+        .await
+        .expect("port 3000 must be available");
+    axum::serve(listener, app)
+        .await
+        .expect("error on running axum serve");
 }
 
 async fn router() -> Router {
@@ -58,15 +64,18 @@ async fn router() -> Router {
         deadpool_diesel::postgres::Manager::new(database_url, deadpool_diesel::Runtime::Tokio1);
     let pool = deadpool_diesel::postgres::Pool::builder(manager)
         .build()
-        .unwrap();
+        .expect("unable to connect to postgres");
 
     // run the migrations on server startup
     {
-        let conn = pool.get().await.unwrap();
+        let conn = pool
+            .get()
+            .await
+            .expect("unable to connect to postgres pool");
         conn.interact(|conn| conn.run_pending_migrations(MIGRATIONS).map(|_| ()))
             .await
-            .unwrap()
-            .unwrap();
+            .expect("unable to send request to postgres pool")
+            .expect("error running migrations");
     }
 
     let tb = Arc::new(RwLock::new(
@@ -79,7 +88,7 @@ async fn router() -> Router {
         allow_add,
     };
 
-    let app = Router::new()
+    Router::new()
         .route("/", get(routes::get_index))
         .route("/accountnames", get(routes::get_account_names))
         .route("/add", put(routes::put_add))
@@ -94,8 +103,7 @@ async fn router() -> Router {
         )
         .route("/commodities", get(routes::get_commodities))
         .route("/version", get(routes::get_version))
-        .with_state(app_state);
-    app
+        .with_state(app_state)
 }
 
 #[tokio::test]

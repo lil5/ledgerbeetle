@@ -5,9 +5,8 @@ pub mod u128 {
         format!("{:x}", n)
     }
 
-    pub fn from_hex_string<'a>(s: &'a str) -> u128 {
-        u128::from_str_radix(s, 16)
-            .expect(format!("string can not be converted to u128 '{}'", s).as_str())
+    pub fn from_hex_string(s: &str) -> u128 {
+        u128::from_str_radix(s, 16).expect("string can not be converted to u128 as hexadecimal")
     }
 }
 

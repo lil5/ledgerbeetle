@@ -45,7 +45,7 @@ pub async fn test() -> Json<Vec<Vec<i32>>> {
 }
 
 pub async fn get_version() -> Json<String> {
-    return Json(clap::crate_version!().to_string());
+    Json(clap::crate_version!().to_string())
 }
 
 #[derive(Deserialize, Validate)]
@@ -79,7 +79,7 @@ pub async fn put_add(
     let mut transfer_ids: Vec<String> = Vec::new();
     for (index, t) in payload.transactions.iter().enumerate() {
         let (account_debit, commodity) = models::find_or_create_account(
-            Box::new(state.tb.clone()),
+            state.tb.clone(),
             &conn,
             t.debit_account.clone(),
             t.commodity_unit.clone(),
@@ -87,7 +87,7 @@ pub async fn put_add(
         .await?;
 
         let (account_credit, _) = models::find_or_create_account(
-            Box::new(state.tb.clone()),
+            state.tb.clone(),
             &conn,
             t.credit_account.clone(),
             t.commodity_unit.clone(),
@@ -95,7 +95,7 @@ pub async fn put_add(
         .await?;
 
         let user_data_128 = tb_utils::u128::from_hex_string(&t.related_id);
-        let user_data_64 = payload.full_date2.clone() as u64;
+        let user_data_64 = payload.full_date2 as u64;
 
         let id = tb::id();
         transfer_ids.push(to_hex_string(id));
@@ -163,7 +163,7 @@ pub async fn get_transactions(
 
     println!(
         "commodities found: '{}'",
-        commodities.iter().map(|a| a.0.clone()).join(", ")
+        commodities.iter().map(|a| a.0).join(", ")
     );
 
     // collect all transfers in a hashmap
@@ -187,9 +187,7 @@ pub async fn get_transactions(
         println!("found transfer data len {}", transfers_data.len());
         for transfer_data in transfers_data.iter() {
             let id = transfer_data.id();
-            if !transfers.contains_key(&id) {
-                transfers.insert(id, *transfer_data);
-            }
+            transfers.entry(id).or_insert(*transfer_data);
         }
     }
 
@@ -203,8 +201,7 @@ pub async fn get_transactions(
         .values()
         .sorted_by(|a, b| Ord::cmp(&a.timestamp(), &b.timestamp()))
     {
-        for account_tb_id in vec![transfer.credit_account_id(), transfer.debit_account_id()].iter()
-        {
+        for account_tb_id in [transfer.credit_account_id(), transfer.debit_account_id()].iter() {
             if !accounts.contains_key(account_tb_id) {
                 missing_account_tb_ids.push(to_hex_string(*account_tb_id));
             }
@@ -213,20 +210,22 @@ pub async fn get_transactions(
 
     let more_accounts = models::find_accounts_by_tb_ids(&conn, missing_account_tb_ids).await?;
     more_accounts.iter().for_each(|a| {
-        accounts.insert(from_hex_string(a.tb_id.as_str()), &a);
+        accounts.insert(from_hex_string(a.tb_id.as_str()), a);
     });
 
     let transactions = transfers
         .iter()
         .sorted_by(|(_, a), (_, b)| Ord::cmp(&b.timestamp(), &a.timestamp()))
         .map(|(_, transfer)| {
-            let commodity = commodities.get(&(transfer.ledger())).unwrap();
-            responses::Transaction::from_tb(*transfer, Box::new(accounts.clone()), commodity)
+            let commodity = commodities
+                .get(&(transfer.ledger()))
+                .expect("logical error unable to find commodity from transfer");
+            responses::Transaction::from_tb(*transfer, accounts.clone(), commodity)
                 .map_err(|_| http_err::internal_error(ValidationError::new("err")))
         })
         .collect::<HttpResult<responses::ResponseTransactions>>()?;
 
-    return Ok(Json(transactions));
+    Ok(Json(transactions))
 }
 
 pub async fn get_commodities(
@@ -279,14 +278,17 @@ pub async fn get_account_balances(
     for tb_account in tb_accounts.iter() {
         let amount = (tb_account.debits_posted() as i64).sub(tb_account.credits_posted() as i64);
         let tb_account_id = to_hex_string(tb_account.id());
-        let account = accounts.iter().find(|a| a.tb_id == tb_account_id).unwrap();
+        let account = accounts
+            .iter()
+            .find(|a| a.tb_id == tb_account_id)
+            .expect("logical error unable to find account");
 
         let commodity = commodities
             .iter()
             .find(|c| *(c.0) == (account.commodities_id as u32))
-            .unwrap();
+            .expect("logical error unable to find commodity");
         let commodity_unit = commodity.1.unit.clone();
-        let commodity_decimal = commodity.1.decimal_place.clone();
+        let commodity_decimal = commodity.1.decimal_place;
 
         balances.push(responses::Balance {
             account_name: account.name.clone(),

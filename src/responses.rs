@@ -23,11 +23,13 @@ pub type ResponseBalances = Vec<Balance>;
 // Types
 // ------------------------------------
 
-pub static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
+pub static RE_DATE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").expect("invalid regex"));
 pub static RE_ACCOUNTS_FIND: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").unwrap());
+    LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").expect("invalid regex"));
 pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(assets|liabilities|equity|revenues|expenses):([a-z0-9]+:)*([a-z0-9]+)$").unwrap()
+    Regex::new(r"^(assets|liabilities|equity|revenues|expenses):([a-z0-9]+:)*([a-z0-9]+)$")
+        .expect("invalid regex")
 });
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
@@ -92,7 +94,7 @@ pub struct AddTransaction {
 impl Transaction {
     pub fn from_tb(
         transfer: tigerbeetle_unofficial::Transfer,
-        accounts: Box<HashMap<u128, &models::Account>>,
+        accounts: HashMap<u128, &models::Account>,
         commodity: &&models::Commodities,
     ) -> Result<Transaction, anyhow::Error> {
         let date = DateTime::from_timestamp_nanos(
@@ -101,7 +103,8 @@ impl Transaction {
                 .map_err(|e| anyhow!(e))?
                 .as_nanos() as i64,
         );
-        let date2 = DateTime::from_timestamp(transfer.user_data_64() as i64, 0).unwrap();
+        let date2 = DateTime::from_timestamp(transfer.user_data_64() as i64, 0)
+            .expect("i64 is invalid date unix");
 
         let debit_amount = transfer.amount() as i64;
 
