@@ -15,6 +15,8 @@ prod-start:
 	docker compose -f docker-compose.prod.yml up -d
 prod-stop:
 	docker compose -f docker-compose.prod.yml stop
+prod-build:
+	docker compose -f docker-compose.prod.yml build
 
 dev:
 	cd frontend; bun i

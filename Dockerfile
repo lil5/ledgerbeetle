@@ -4,13 +4,13 @@ RUN apt-get update && apt install -y curl postgresql-client-15 libclang-dev
 
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock tigerbeetle-unofficial ./
+COPY Cargo.toml Cargo.lock ./
 
 RUN cargo fetch --locked
 
 COPY . .
 
-RUN cargo run build --release
+RUN cargo build --release
 
 EXPOSE 3000
 
