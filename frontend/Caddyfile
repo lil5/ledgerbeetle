@@ -1,12 +1,11 @@
+{
+	admin off
+	auto_https off
+}
+
 :8080 {
-	@proxypaths {
-		path /accountnames
-		path /accounttransactions
-		path /accountbalances
-		path /add
-	}
-	handle @proxypaths {
-		reverse_proxy be:3000
+	handle_path /api/* {
+		reverse_proxy localhost:3000
 	}
 
 	handle {

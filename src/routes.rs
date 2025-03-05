@@ -1,5 +1,5 @@
 use axum::extract::Path;
-use axum::{extract::State, response::Redirect, Json};
+use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 use itertools::Itertools as _;
 use serde::Deserialize;
@@ -26,10 +26,6 @@ pub async fn get_account_names(
     let accounts = models::list_all_accounts(&conn).await?;
 
     Ok(Json(accounts))
-}
-
-pub async fn get_index() -> Redirect {
-    Redirect::temporary("/journal")
 }
 
 #[debug_handler]

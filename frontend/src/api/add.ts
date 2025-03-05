@@ -7,7 +7,7 @@ export function useAddTransactions() {
     mutationFn: async (
       add_transactions: AddTransactions,
     ): Promise<string[]> => {
-      const response = await fetch("/add", {
+      const response = await fetch("/api/add", {
         method: "PUT",
         headers: {
           "content-type": "application/json",

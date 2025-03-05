@@ -1,6 +1,9 @@
 /target
-/frontend
 /bruno
 /.vscode
 /.env
 /.git
+/frontend/dist
+/frontend/node_modules
+/Dockerfile
+/.dockerignore

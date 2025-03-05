@@ -1,21 +1,20 @@
 name: ledgerbeetle
 
 services:
-  fe:
-    build:
-      context: ./frontend
-    env_file:
-      - /dev/null
-    environment:
-      - VITE_ALLOW_ADD=true
-    ports:
-      - 127.0.0.1:8080:8080
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      fe_net:
-  be:
+  # fe:
+  #   build:
+  #     context: ./frontend
+  #   env_file:
+  #     - /dev/null
+  #   environment:
+  #   ports:
+  #     - 127.0.0.1:8080:8080
+  #   volumes:
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   networks:
+  #     fe_net:
+  app:
     build:
       context: .
     env_file:
@@ -27,6 +26,8 @@ services:
       - TB_CLIENT_ID=0
       - TB_ADDRESS=10.7.0.5:3001
       - ALLOW_ADD=true
+    ports:
+      - 127.0.0.1:8080:8080
     networks:
       fe_net:
       db_net:

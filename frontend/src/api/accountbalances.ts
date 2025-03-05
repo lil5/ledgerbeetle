@@ -3,7 +3,7 @@ export function useAccountBalances(accounts_re: string) {
   return useQuery({
     queryKey: ["accountbalances", accounts_re],
     queryFn: async (): Promise<Balances> => {
-      const response = await fetch("/accountbalances/" + accounts_re);
+      const response = await fetch("/api/accountbalances/" + accounts_re);
 
       return await response.json();
     },

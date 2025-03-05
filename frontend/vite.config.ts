@@ -9,10 +9,11 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   server: {
     proxy: {
-      "/accountnames": base_api,
-      "/accounttransactions": base_api,
-      "/accountbalances": base_api,
-      "/add": base_api,
+      "/api": {
+        target: base_api,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
     },
   },
 });

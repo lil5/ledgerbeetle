@@ -89,7 +89,6 @@ async fn router() -> Router {
     };
 
     Router::new()
-        .route("/", get(routes::get_index))
         .route("/accountnames", get(routes::get_account_names))
         .route("/add", put(routes::put_add))
         .route("/test", get(routes::test))
