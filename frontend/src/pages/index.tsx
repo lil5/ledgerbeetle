@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import {
+  Button,
   Card,
+  Code,
   Input,
   Listbox,
   ListboxItem,
@@ -12,10 +14,12 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
+  Tooltip,
 } from "@heroui/react";
 import Decimal from "decimal.js";
 import dayjs from "dayjs";
 import { useDebounceValue } from "usehooks-ts";
+import { InfoIcon } from "lucide-react";
 
 import { useAccountNames } from "@/api/accountnames";
 import DefaultLayout from "@/layouts/default";
@@ -43,10 +47,54 @@ export default function IndexPage() {
 
   return (
     <DefaultLayout>
-      <div className="flex  justify-between w-full flex-wrap md:flex-nowrap gap-4">
-        <Card className="w-1/2 sm:w-1/3 p-2">
-          <Input value={search} onValueChange={setSearch} />
-          <h1 className="mx-2">Select one or many accounts</h1>
+      <div className="flex justify-between w-full flex-wrap md:flex-nowrap gap-4">
+        <Card className="w-full md:w-1/2 lg:w-1/3 p-2 gap-1 flex flex-col relative overflow-visible">
+          <Input
+            endContent={
+              <Tooltip
+                content={
+                  <div className="px-1 py-2">
+                    <div className="text-small font-bold mb-2">
+                      Filter symbols
+                    </div>
+                    <div className="text-tiny">
+                      <ul className="space-y-2">
+                        <li>
+                          <Code className="text-xs">*</Code> select any
+                          character
+                        </li>
+                        <li>
+                          <Code className="text-xs">**</Code> select zero or
+                          more characters
+                        </li>
+                        <li>
+                          <Code className="text-xs">|</Code> match either left
+                          or right of it
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                }
+                offset={15}
+                placement="right-start"
+              >
+                <Button
+                  isIconOnly
+                  color="primary"
+                  radius="md"
+                  size="sm"
+                  variant="light"
+                >
+                  <InfoIcon size={16} />
+                </Button>
+              </Tooltip>
+            }
+            value={search}
+            onValueChange={setSearch}
+          />
+          <h1 className="mx-2 text-sm text-default-500 pt-1">
+            Select one or many accounts:
+          </h1>
           <Listbox
             isVirtualized
             className="w-full h-60"
@@ -64,7 +112,7 @@ export default function IndexPage() {
           </Listbox>
         </Card>
 
-        <div>
+        <div className="w-full md:w-1/2 lg:w-1/3">
           {searchDebounce ? (
             <BalanceTable selectedAccounts={searchDebounce} />
           ) : null}
@@ -114,7 +162,7 @@ function TransactionsTable(props: { selectedAccounts: string }) {
 
   const columns = [
     { key: "date", label: "Date" },
-    { key: "description", label: "Description" },
+    { key: "immutable_meta", label: "Immutable Metadata" },
     { key: "accounts", label: "Accounts In/out" },
     { key: "amount", label: "Amount" },
   ];
@@ -161,9 +209,20 @@ function TransactionsTable(props: { selectedAccounts: string }) {
       <TableBody items={paginatedItems}>
         {(item) => (
           <TableRow key={item.transferId}>
-            <TableCell>{dayjs.unix(item.fullDate).format()}</TableCell>
             <TableCell>
-              <dl className="grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
+              <dl className="inline-grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
+                <dt>Created timestamp:</dt>
+                <dd title={item.fullDate.toString()}>
+                  {dayjs.unix(item.fullDate).toISOString()}
+                </dd>
+                <dt>Custom timestamp:</dt>
+                <dd title={item.fullDate2.toString()}>
+                  {dayjs.unix(item.fullDate2).toISOString()}
+                </dd>
+              </dl>
+            </TableCell>
+            <TableCell>
+              <dl className="inline-grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
                 <dt>Transfer ID:</dt>
                 <dd>{item.transferId}</dd>
                 <dt>Related ID:</dt>
@@ -180,11 +239,12 @@ function TransactionsTable(props: { selectedAccounts: string }) {
             </TableCell>
             <TableCell>
               <ol className="text-right font-mono">
-                {[item.debitAmount, item.creditAmount].map((v, i) => (
-                  <li key={i}>
-                    <Numberify amount={v} t={item} />
-                  </li>
-                ))}
+                <li className="text-success-700">
+                  <Numberify amount={item.debitAmount} t={item} />
+                </li>
+                <li className="text-danger-700">
+                  <Numberify amount={item.creditAmount} t={item} />
+                </li>
               </ol>
             </TableCell>
           </TableRow>

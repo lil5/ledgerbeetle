@@ -27,7 +27,8 @@ import dayjs from "dayjs";
 import { AddTransaction, useAddTransactions } from "@/api/add";
 import { useAccountNames } from "@/api/accountnames";
 
-const IS_ACCOUNT_RE = /^(assets|liabilities|equity|revenues|expenses):.*/;
+const RE_IS_ACCOUNT = /^(assets|liabilities|equity|revenues|expenses):.*/;
+const RE_HEXADECIMAL = /^[a-f0-9]{1,31}$/;
 
 const zodAddTransaction = z.object({
   fullDate2: z.number(),
@@ -36,9 +37,14 @@ const zodAddTransaction = z.object({
       z.object({
         code: z.number().min(1),
         commodityUnit: z.string().min(1),
-        relatedId: z.string().min(1),
-        debitAccount: z.string().regex(IS_ACCOUNT_RE),
-        creditAccount: z.string(),
+        relatedId: z
+          .string()
+          .regex(
+            RE_HEXADECIMAL,
+            "must a length between 1 - 31 and compose of a-f and/or 0-9 characters",
+          ),
+        debitAccount: z.string().regex(RE_IS_ACCOUNT),
+        creditAccount: z.string().regex(RE_IS_ACCOUNT),
         amount: z.number(),
       }),
     )
@@ -106,6 +112,8 @@ export default function AddModal() {
       transactions,
     };
 
+    console.info("add transaction", addTransactionsData);
+
     try {
       zodAddTransaction.parse(addTransactionsData);
     } catch (err) {
@@ -130,7 +138,10 @@ export default function AddModal() {
   return (
     <>
       <Button color="success" variant="bordered" onPress={onOpen}>
-        Add Transactions <PlusIcon className="ms-1" />
+        <span className="text-foreground">
+          Add<span className="hidden sm:inline"> Transactions</span>
+        </span>
+        <PlusIcon className="ms-1" />
       </Button>
       <Modal
         isOpen={isOpen}
@@ -147,7 +158,7 @@ export default function AddModal() {
               <ModalBody className="w-full">
                 <DateInput
                   defaultValue={now("Europe/Amsterdam")}
-                  label="Date"
+                  label="Custom date"
                   name="date"
                 />
 
@@ -182,7 +193,7 @@ export default function AddModal() {
                         />
                       </div>
                       <div className="flex flex-col gap-2">
-                        <p className="text-sm">Meta data</p>
+                        <p className="text-sm">Metadata</p>
                         <Input
                           label="Code"
                           name={"code" + i}

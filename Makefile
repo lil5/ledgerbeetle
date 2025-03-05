@@ -9,7 +9,7 @@ dev-docker-stop:
 dev-be-start:
 	cargo run
 dev-fe-start:
-	cd frontend; bun run dev
+	cd frontend; VITE_ALLOW_ADD=true bun run dev
 
 prod-start:
 	docker compose -f docker-compose.prod.yml up -d
