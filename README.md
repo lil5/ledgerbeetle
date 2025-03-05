@@ -6,6 +6,25 @@
 
 ![screenshot1.png](https://s6.imgcdn.dev/YhRft0.png)
 
+## Getting started
+
+**Requirements**
+
+- docker
+- make
+
+**Setup**
+
+Remove the tb service if you are running your own or edit the command just like instructed in [Development](#development).
+
+Edit .env, docker-compose.prod.yml with proper database password
+
+**Run**
+
+```
+make prod-start
+```
+
 ## Development
 
 **Requirements**
@@ -18,16 +37,16 @@
 
 **Setup**
 
-Edit the `docker-compose.dev.yml` under the tb service, follow the changes shown below:
+Edit the `docker-compose.prod.yml` under the tb service, follow the changes shown below:
 
 ```diff
 +++command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
-+++# command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
 ---# command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
++++# command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
 ---command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
 ```
 
-Then run `docker compose up tb` then when it is running `ctrl` + `C` and revert the change.
+Then run `docker compose -f docker-compose.dev.yml up tb` then when it is running `ctrl` + `C` and revert the change.
 
 **Run**
 

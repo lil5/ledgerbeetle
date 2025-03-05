@@ -9,6 +9,8 @@ import {
 import { ThemeSwitch } from "./theme-switch";
 import AddModal from "./add-modal";
 
+const ALLOW_ADD = import.meta.env.VITE_ALLOW_ADD == "true";
+
 export const Navbar = () => {
   return (
     <HeroUINavbar
@@ -34,9 +36,11 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent className="flex flex-grow-0" justify="end">
-        <NavbarItem className="gap-2">
-          <AddModal />
-        </NavbarItem>
+        {ALLOW_ADD ? (
+          <NavbarItem className="gap-2">
+            <AddModal />
+          </NavbarItem>
+        ) : null}
         <NavbarItem className="gap-2">
           {/* <Link isExternal href={siteConfig.links.github} title="GitHub">
             <GithubIcon className="text-default-500" />
