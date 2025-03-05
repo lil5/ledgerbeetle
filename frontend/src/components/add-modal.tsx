@@ -56,6 +56,7 @@ export default function AddModal() {
 
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [alertErr, setAlertErr] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
 
   const [postings, setPostings] = useState(() => [
     { key: crypto.randomUUID() },
@@ -67,72 +68,88 @@ export default function AddModal() {
 
   function onSubmit(e: any) {
     e.preventDefault();
-    const data: Record<string, any> = Object.fromEntries(
-      new FormData(e.target),
+    setSubmitLoading(true);
+
+    (async () => {
+      const data: Record<string, any> = Object.fromEntries(
+        new FormData(e.target),
+      );
+
+      const date = dayjs(
+        parseZonedDateTime(
+          (
+            (e.target as HTMLElement).querySelector(
+              "[name=date]",
+            )! as HTMLInputElement
+          ).value,
+        ).toDate(),
+      ).unix();
+
+      const transactions: AddTransaction[] = [];
+      let i = 0;
+
+      while (true) {
+        const debit = data["debit" + i];
+
+        if (!debit) break;
+
+        const credit = data["credit" + i]!;
+        const amount = data["amount" + i]!;
+        const unit = data["unit" + i]!;
+        const code = data["code" + i]!;
+        const related_id = data["related_id" + i]!;
+
+        transactions.push({
+          code: parseInt(code),
+          commodityUnit: unit,
+          relatedId: related_id,
+          debitAccount: debit,
+          creditAccount: credit,
+          amount: parseInt(amount),
+        });
+
+        i++;
+      }
+
+      const addTransactionsData = {
+        fullDate2: date,
+        transactions,
+      };
+
+      console.info("add transaction", addTransactionsData);
+
+      try {
+        zodAddTransaction.parse(addTransactionsData);
+      } catch (err) {
+        const validationError = fromError(err);
+
+        console.warn("Validation error:", validationError);
+        setAlertErr(validationError.toString());
+
+        throw validationError;
+      }
+      try {
+        await mutationAdd.mutateAsync(addTransactionsData);
+      } catch (err: any) {
+        console.error("Mutation async add transaction error:", err);
+        setAlertErr((err || "Unknown error").toString());
+
+        throw err;
+      }
+      setAlertErr("");
+    })().then(
+      () => {
+        setTimeout(() => {
+          setPostings([]);
+          setSubmitLoading(false);
+        }, 1300);
+      },
+      () => {
+        setTimeout(() => {
+          setSubmitLoading(false);
+        }, 1300);
+      },
     );
-
-    const date = dayjs(
-      parseZonedDateTime(
-        (
-          (e.target as HTMLElement).querySelector(
-            "[name=date]",
-          )! as HTMLInputElement
-        ).value,
-      ).toDate(),
-    ).unix();
-
-    const transactions: AddTransaction[] = [];
-    let i = 0;
-
-    while (true) {
-      const debit = data["debit" + i];
-
-      if (!debit) break;
-
-      const credit = data["credit" + i]!;
-      const amount = data["amount" + i]!;
-      const unit = data["unit" + i]!;
-      const code = data["code" + i]!;
-      const related_id = data["related_id" + i]!;
-
-      transactions.push({
-        code: parseInt(code),
-        commodityUnit: unit,
-        relatedId: related_id,
-        debitAccount: debit,
-        creditAccount: credit,
-        amount: parseInt(amount),
-      });
-
-      i++;
-    }
-
-    const addTransactionsData = {
-      fullDate2: date,
-      transactions,
-    };
-
-    console.info("add transaction", addTransactionsData);
-
-    try {
-      zodAddTransaction.parse(addTransactionsData);
-    } catch (err) {
-      const validationError = fromError(err);
-
-      console.warn("Validation error:", validationError);
-      setAlertErr(validationError.toString());
-
-      return;
-    }
-    try {
-      mutationAdd.mutateAsync(addTransactionsData);
-    } catch (err) {
-      console.error("Mutation async add transaction error:", err);
-      setAlertErr((err || "Unknown error").toString());
-
-      return;
-    }
-    setAlertErr("");
   }
 
   return (
@@ -231,7 +248,7 @@ export default function AddModal() {
                 <Button color="danger" variant="light" onPress={onClose}>
                   Close
                 </Button>
-                <Button color="primary" type="submit">
+                <Button color="primary" type="submit" isLoading={submitLoading}>
                   Submit
                 </Button>
               </ModalFooter>

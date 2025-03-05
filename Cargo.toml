@@ -1,6 +1,6 @@
 [package]
-name = "hledger_tb"
-version = "0.1.0"
+name = "ledgerbeetle"
+version = "0.2.0"
 edition = "2021"
 
 [[bin]]

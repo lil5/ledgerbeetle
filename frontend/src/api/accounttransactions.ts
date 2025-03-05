@@ -5,6 +5,8 @@ export function useAccountTransactions(accounts_re: string) {
     queryFn: async (): Promise<Transactions> => {
       const response = await fetch("/api/accounttransactions/" + accounts_re);
 
+      if (response.status != 200) throw await response.text();
+
       return await response.json();
     },
   });

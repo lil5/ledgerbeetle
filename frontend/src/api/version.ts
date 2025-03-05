@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-export function useAccountNames() {
+export function useVersion() {
   return useQuery({
-    queryKey: ["accountnames"],
-    queryFn: async (): Promise<Array<string>> => {
-      const response = await fetch("/api/accountnames");
+    queryKey: ["version"],
+    queryFn: async (): Promise<string> => {
+      const response = await fetch("/api/version");
 
       if (response.status != 200) throw await response.text();
 

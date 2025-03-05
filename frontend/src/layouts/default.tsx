@@ -1,14 +1,17 @@
 import { Button } from "@heroui/react";
 import { GitForkIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Navbar } from "@/components/navbar";
-import { Link } from "react-router-dom";
+import { useVersion } from "@/api/version";
 
 export default function DefaultLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { data: version } = useVersion();
+
   return (
     <div className="relative flex flex-col h-screen">
       <Navbar />
@@ -21,8 +24,8 @@ export default function DefaultLayout({
           Apache 2.0
         </p>
         <Button
-          as={Link}
           aria-label="Star lil5/ledgerbeetle on GitHub"
+          as={Link}
           className="font-semibold"
           size="sm"
           target="_blank"
@@ -32,6 +35,7 @@ export default function DefaultLayout({
           <GitForkIcon size={16} />
           Github
         </Button>
+        <p className="text-default-500 text-sm">{"version " + version}</p>
       </footer>
     </div>
   );

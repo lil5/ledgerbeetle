@@ -15,6 +15,8 @@ export function useAddTransactions() {
         body: JSON.stringify(add_transactions),
       });
 
+      if (response.status != 200) throw await response.text();
+
       return await response.json();
     },
     onSuccess: () => {

@@ -5,6 +5,8 @@ export function useAccountBalances(accounts_re: string) {
     queryFn: async (): Promise<Balances> => {
       const response = await fetch("/api/accountbalances/" + accounts_re);
 
+      if (response.status != 200) throw await response.text();
+
       return await response.json();
     },
   });

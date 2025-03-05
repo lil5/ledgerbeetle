@@ -21,29 +21,30 @@ export function useTheme() {
 
   const [isMounted, setIsMounted] = useState(false);
 
-  const setMediaTheme = () => {
-    if (!(window && document)) return ThemeProps.LIGHT;
-
-    const targetTheme = window.matchMedia?.(MEDIA).matches
+  const setMediaTheme = (matches?: boolean) => {
+    let targetTheme = (
+      matches === undefined ? window.matchMedia?.(MEDIA).matches : matches
+    )
       ? ThemeProps.DARK
       : ThemeProps.LIGHT;
 
     const removeTheme =
       targetTheme == ThemeProps.DARK ? ThemeProps.LIGHT : ThemeProps.DARK;
 
-    document.documentElement.classList.remove(removeTheme);
-    document.documentElement.classList.add(targetTheme);
+    const elHtml = document.getElementsByTagName("html")[0];
+
+    elHtml.classList.remove(removeTheme);
+    elHtml.classList.add(targetTheme);
 
     return targetTheme;
   };
-  const [theme, setTheme] = useState<Theme>(ThemeProps.LIGHT);
-
-  const handleMediaQuery = (_: MediaQueryListEvent | MediaQueryList) => {
-    setTheme(setMediaTheme());
+  const handleMediaQuery = (e: MediaQueryListEvent | MediaQueryList) => {
+    setMediaTheme(e.matches);
   };
 
   useEffect(() => {
     if (!isMounted) return;
+    setMediaTheme();
     const media = window.matchMedia(MEDIA);
 
     media.addEventListener("change", handleMediaQuery);
@@ -52,8 +53,6 @@ export function useTheme() {
   }, [isMounted]);
 
   useEffect(() => {
-    setIsMounted(true);
+    if (!isMounted && window) setIsMounted(true);
   }, [isMounted]);
-
-  return theme;
 }
