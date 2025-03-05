@@ -8,6 +8,8 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 
+ENV VITE_ALLOW_ADD=true
+
 RUN bun run build
 
 FROM caddy AS caddy
@@ -15,5 +17,3 @@ FROM caddy AS caddy
 COPY Caddyfile /etc/caddy/
 
 COPY --from=build /app/dist/ /srv/
-
-ENTRYPOINT [ "caddy","start" ]

@@ -4,18 +4,34 @@ services:
   fe:
     build:
       context: ./frontend
+    env_file:
+      - /dev/null
+    environment:
+      - VITE_ALLOW_ADD=true
     ports:
       - 127.0.0.1:8080:8080
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      fe_net:
   be:
     build:
       context: .
+    env_file:
+      - /dev/null
     security_opt:
       - seccomp:unconfined
     environment:
       - DATABASE_URL=postgres://postgres:example@db/postgres
       - TB_CLIENT_ID=0
-      - TB_ADDRESS=tb:3001
+      - TB_ADDRESS=10.7.0.5:3001
       - ALLOW_ADD=true
+    networks:
+      fe_net:
+      db_net:
+      tb_net:
+        ipv4_address: 10.7.0.4
   db:
     image: postgres:15-alpine
     # set shared memory limit when using docker-compose
@@ -24,6 +40,8 @@ services:
       POSTGRES_PASSWORD: example
     # ports:
     #   - 127.0.0.1:5432:5432
+    networks:
+      db_net:
     volumes:
       - db_data:/var/lib/postgresql/data
   tb:
@@ -39,6 +57,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      tb_net:
+        ipv4_address: 10.7.0.5
     # command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
     command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
 
@@ -46,3 +67,18 @@ volumes:
   app_registry:
   db_data:
   tb_data:
+  caddy_data:
+  caddy_config:
+
+
+networks:
+  fe_net:
+  db_net:
+  tb_net:
+    name: prod_custom_net
+    attachable: true
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.7.0.0/16
+          gateway: 10.7.0.1
