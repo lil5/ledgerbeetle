@@ -1,9 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-export function useAccountTransactions(accounts_re: string) {
+export function useAccountTransactions(
+  accounts_re: string,
+  date_newest: number,
+  date_oldest: number,
+) {
   return useQuery({
-    queryKey: ["accounttransactions", accounts_re],
+    initialData: [],
+    queryKey: ["accounttransactions", accounts_re, date_newest, date_oldest],
     queryFn: async (): Promise<Transactions> => {
-      const response = await fetch("/api/accounttransactions/" + accounts_re);
+      const response = await fetch(
+        `/api/accounttransactions/${accounts_re}?date_newest=${date_newest}&date_oldest=${date_oldest}`,
+      );
 
       if (response.status != 200) throw await response.text();
 

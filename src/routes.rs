@@ -1,14 +1,14 @@
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 use itertools::Itertools as _;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::ops::Sub;
+use std::time::{Duration, UNIX_EPOCH};
 use tigerbeetle_unofficial as tb;
 use validator::Validate;
 use validator::ValidationError;
-// static RE_DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").unwrap());
 
 use crate::http_err::HttpResult;
 use crate::models::Account;
@@ -134,8 +134,16 @@ pub struct GetTransactionsRequest {
     #[validate(regex(path=*RE_DATE))]
     filter: String,
 }
+
+#[derive(Deserialize)]
+pub struct GetTransactionsQuery {
+    date_newest: usize,
+    date_oldest: usize,
+}
+
 pub async fn get_transactions(
     Path(filter): Path<String>,
+    Query(query): Query<GetTransactionsQuery>,
     State(state): State<AppState>,
 ) -> Result<Json<responses::ResponseTransactions>, http_err::HttpErr> {
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
@@ -168,22 +176,49 @@ pub async fn get_transactions(
         // get transfers per account
         let account_tb_id = from_hex_string(account.tb_id.as_str());
 
-        let flags =
-            tb::core::account::FilterFlags::DEBITS | tb::core::account::FilterFlags::CREDITS;
-        let filter =
-            tb::core::account::Filter::new(account_tb_id, TB_MAX_BATCH_SIZE).with_flags(flags);
+        let flags = tb::core::account::FilterFlags::DEBITS
+            | tb::core::account::FilterFlags::CREDITS
+            | tb::core::account::FilterFlags::REVERSED;
         println!("getting account {account_tb_id} transfers");
-        let transfers_data: Vec<tb::core::Transfer> = state
-            .tb
-            .read()
-            .await
-            .get_account_transfers(Box::new(filter))
-            .await
-            .map_err(http_err::internal_error)?;
-        println!("found transfer data len {}", transfers_data.len());
-        for transfer_data in transfers_data.iter() {
-            let id = transfer_data.id();
-            transfers.entry(id).or_insert(*transfer_data);
+
+        // loops around and collects more than the TB_MAX_BATCH_SIZE if possible
+        let mut is_response_larger_than_tb_max_batch_size = true;
+        let mut previous_transfer_timestamp = UNIX_EPOCH
+            .checked_add(Duration::from_millis(query.date_newest as u64))
+            .expect("i64 unix nano date max");
+        let oldest_transfer_timestamp = UNIX_EPOCH
+            .checked_add(Duration::from_millis(query.date_oldest as u64))
+            .expect("i64 unix nano date max");
+        while is_response_larger_than_tb_max_batch_size {
+            let filter = tb::core::account::Filter::new(account_tb_id, TB_MAX_BATCH_SIZE)
+                .with_flags(flags)
+                .with_timestamp_max(previous_transfer_timestamp)
+                .with_timestamp_min(oldest_transfer_timestamp);
+            let transfers_data: Vec<tb::core::Transfer> = state
+                .tb
+                .read()
+                .await
+                .get_account_transfers(Box::new(filter))
+                .await
+                .map_err(http_err::internal_error)?;
+            println!("found transfer data len {}", transfers_data.len());
+
+            is_response_larger_than_tb_max_batch_size =
+                transfers_data.len() > (TB_MAX_BATCH_SIZE as usize) - 1;
+            let transfers_data_last_index = match transfers_data.len() {
+                i if i > 0 => i - 1,
+                _ => 0,
+            };
+            for (i, transfer_data) in transfers_data.iter().enumerate() {
+                let id = transfer_data.id();
+                transfers.entry(id).or_insert(*transfer_data);
+                if transfers_data_last_index == i {
+                    previous_transfer_timestamp = transfer_data
+                        .timestamp()
+                        .checked_sub(Duration::from_nanos(1))
+                        .expect("time");
+                }
+            }
         }
     }
 
@@ -220,6 +255,8 @@ pub async fn get_transactions(
                 .map_err(|_| http_err::internal_error(ValidationError::new("err")))
         })
         .collect::<HttpResult<responses::ResponseTransactions>>()?;
+
+    println!("transactions len {}", transactions.len());
 
     Ok(Json(transactions))
 }

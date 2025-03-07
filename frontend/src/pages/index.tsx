@@ -3,6 +3,8 @@ import {
   Button,
   Card,
   Code,
+  DateInput,
+  DateRangePicker,
   Input,
   Listbox,
   ListboxItem,
@@ -16,6 +18,13 @@ import {
   TableRow,
   Tooltip,
 } from "@heroui/react";
+
+import {
+  parseDate,
+  getLocalTimeZone,
+  now,
+  parseDuration,
+} from "@internationalized/date";
 import Decimal from "decimal.js";
 import dayjs from "dayjs";
 import { useDebounceValue } from "usehooks-ts";
@@ -156,8 +165,21 @@ function BalanceTable(props: { selectedAccounts: string }) {
   );
 }
 function TransactionsTable(props: { selectedAccounts: string }) {
+  const [betweenDates, setBetweenDates] = useState({
+    start: now("utc").subtract({ days: 1 }),
+    end: now("utc"),
+  });
+  const { date_newest, date_oldest } = useMemo(
+    () => ({
+      date_newest: betweenDates.end.toDate().valueOf(),
+      date_oldest: betweenDates.start.toDate().valueOf(),
+    }),
+    [betweenDates],
+  );
   const { data: items, isLoading } = useAccountTransactions(
     props.selectedAccounts,
+    date_newest,
+    date_oldest,
   );
 
   const columns = [
@@ -186,19 +208,23 @@ function TransactionsTable(props: { selectedAccounts: string }) {
     <Table
       aria-label="Example table with dynamic content"
       bottomContent={
-        <div
-          className={"flex w-full justify-center".concat(
-            pages > 1 ? "" : " hidden",
-          )}
-        >
-          <Pagination
-            isCompact
-            showControls
-            showShadow
-            color="secondary"
-            page={page}
-            total={pages}
-            onChange={(page) => setPage(page)}
+        <div className="flex flex-col gap-2 items-center">
+          <div className={"".concat(pages > 1 ? "" : " hidden")}>
+            <Pagination
+              isCompact
+              showControls
+              showShadow
+              color="secondary"
+              page={page}
+              total={pages}
+              onChange={(page) => setPage(page)}
+            />
+          </div>
+          <DateRangePicker
+            className="max-w-md"
+            label="Transactions between"
+            value={betweenDates}
+            onChange={setBetweenDates as any}
           />
         </div>
       }
