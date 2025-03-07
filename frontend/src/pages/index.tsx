@@ -97,7 +97,7 @@ export default function IndexPage() {
           </h1>
           <Listbox
             isVirtualized
-            className="w-full h-60"
+            classNames={{ list: "w-full h-60" }}
             items={items}
             label={"Select from 1000 items"}
             selectedKeys={selectedAccountNames}
