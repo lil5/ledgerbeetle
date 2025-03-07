@@ -212,12 +212,12 @@ function TransactionsTable(props: { selectedAccounts: string }) {
             <TableCell>
               <dl className="inline-grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
                 <dt>Created timestamp:</dt>
-                <dd title={item.fullDate.toString()}>
-                  {dayjs.unix(item.fullDate).toISOString()}
+                <dd title={"unix milli: " + item.fullDate.toString()}>
+                  {dayjs(item.fullDate).toISOString()}
                 </dd>
                 <dt>Custom timestamp:</dt>
-                <dd title={item.fullDate2.toString()}>
-                  {dayjs.unix(item.fullDate2).toISOString()}
+                <dd title={"unix milli: " + item.fullDate2.toString()}>
+                  {dayjs(item.fullDate2).toISOString()}
                 </dd>
               </dl>
             </TableCell>

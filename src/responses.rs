@@ -3,7 +3,6 @@ use std::time::UNIX_EPOCH;
 use std::{ops::Neg, sync::LazyLock};
 
 use anyhow::anyhow;
-use chrono::DateTime;
 use regex::Regex;
 use serde::*;
 use validator::Validate;
@@ -37,15 +36,13 @@ pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
 pub struct Transaction {
     /// commodity used
     pub commodity_unit: String,
-
+    /// location of decimal point
     pub commodity_decimal: i32,
     /// transaction code
     pub code: i32,
-    /// unix time seconds
+    /// unix time milliseconds
     pub full_date: i64,
-    /// unix additional nano seconds
-    pub full_date_sub_nano: i64,
-    /// unit time seconds
+    /// unit time milliseconds
     pub full_date2: i64,
     /// random hex u128 string
     pub related_id: String,
@@ -64,7 +61,7 @@ pub struct Transaction {
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTransactions {
-    /// unix time seconds
+    /// unix time milliseconds
     pub full_date2: i64,
     /// list of transactions
     #[validate(length(min = 1))]
@@ -97,14 +94,11 @@ impl Transaction {
         accounts: HashMap<u128, &models::Account>,
         commodity: &&models::Commodities,
     ) -> Result<Transaction, anyhow::Error> {
-        let date = DateTime::from_timestamp_nanos(
-            (transfer.timestamp())
-                .duration_since(UNIX_EPOCH)
-                .map_err(|e| anyhow!(e))?
-                .as_nanos() as i64,
-        );
-        let date2 = DateTime::from_timestamp(transfer.user_data_64() as i64, 0)
-            .expect("i64 is invalid date unix");
+        let date = (transfer.timestamp())
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| anyhow!(e))?
+            .as_millis() as i64;
+        let date2 = transfer.user_data_64() as i64;
 
         let debit_amount = transfer.amount() as i64;
 
@@ -120,9 +114,8 @@ impl Transaction {
         };
         Ok(Transaction {
             code: transfer.code().into(),
-            full_date: date.timestamp(),
-            full_date_sub_nano: date.timestamp_subsec_nanos() as i64,
-            full_date2: date2.timestamp(),
+            full_date: date,
+            full_date2: date2,
             related_id: tb_utils::u128::to_hex_string(transfer.user_data_128()),
             transfer_id: tb_utils::u128::to_hex_string(transfer.id()),
             debit_account,

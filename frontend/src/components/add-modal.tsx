@@ -22,7 +22,6 @@ import { PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-import dayjs from "dayjs";
 
 import { AddTransaction, useAddTransactions } from "@/api/add";
 import { useAccountNames } from "@/api/accountnames";
@@ -75,15 +74,15 @@ export default function AddModal() {
         new FormData(e.target),
       );
 
-      const date = dayjs(
-        parseZonedDateTime(
-          (
-            (e.target as HTMLElement).querySelector(
-              "[name=date]",
-            )! as HTMLInputElement
-          ).value,
-        ).toDate(),
-      ).unix();
+      const date = parseZonedDateTime(
+        (
+          (e.target as HTMLElement).querySelector(
+            "[name=date]",
+          )! as HTMLInputElement
+        ).value,
+      )
+        .toDate()
+        .valueOf();
 
       const transactions: AddTransaction[] = [];
       let i = 0;
