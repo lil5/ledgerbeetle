@@ -60,8 +60,12 @@ mod tests {
         );
 
         {
+            let now2 = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_millis() as i64;
             let response = server
-                .get(format!("/accounttransactions/liabilities:test:{}:debit", now).as_str())
+                .get(format!("/accounttransactions/liabilities:test:{}:debit?date_newest={}&date_oldest={}", now, now2, now).as_str())
                 .await;
             assert_eq!(response.status_code(), StatusCode::OK);
             let json = response.json::<responses::ResponseTransactions>();
@@ -110,8 +114,12 @@ mod tests {
         }
 
         {
+            let now2 = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_millis() as i64;
             let response = server
-                .get(format!("/accounttransactions/liabilities:test:{}:debit", now).as_str())
+                .get(format!("/accounttransactions/liabilities:test:{}:debit?date_newest={}&date_oldest={}", now, now2, now).as_str())
                 .await;
             assert_eq!(response.status_code(), StatusCode::OK);
             let json = response.json::<responses::ResponseTransactions>();
