@@ -2,8 +2,12 @@ import { useMemo, useState } from "react";
 import {
   Button,
   Card,
+  CardBody,
+  CardHeader,
+  Checkbox,
   Code,
   DateInput,
+  DatePicker,
   DateRangePicker,
   Input,
   Listbox,
@@ -122,9 +126,7 @@ export default function IndexPage() {
         </Card>
 
         <div className="w-full md:w-1/2 lg:w-1/3">
-          {searchDebounce ? (
-            <BalanceTable selectedAccounts={searchDebounce} />
-          ) : null}
+          <BalanceTable selectedAccounts={searchDebounce} />
         </div>
       </div>
       <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
@@ -137,37 +139,71 @@ export default function IndexPage() {
 }
 
 function BalanceTable(props: { selectedAccounts: string }) {
-  const { data: items, isLoading } = useAccountBalances(props.selectedAccounts);
+  const [showFilter, setShowFilter] = useState(false);
+  const [filterDate, setFilterDate] = useState(now("Europe/Amsterdam"));
+  const filterDateIfTrue = useMemo(() => {
+    if (showFilter) return filterDate.toDate().valueOf();
+
+    return null;
+  }, [showFilter, filterDate]);
+  const { data: items, isFetching } = useAccountBalances(
+    props.selectedAccounts,
+    filterDateIfTrue,
+  );
 
   const columns = [
     { key: "account", label: "Account" },
     { key: "balance", label: "Balance" },
   ];
 
-  if (isLoading) return <Spinner />;
-
   return (
-    <Table aria-label="Example table with dynamic content">
-      <TableHeader columns={columns}>
-        {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
-      </TableHeader>
-      <TableBody items={items}>
-        {(item) => (
-          <TableRow key={item.accountName + item.commodityUnit}>
-            <TableCell>{item.accountName}</TableCell>
-            <TableCell className="text-right font-mono">
-              <Numberify amount={item.amount} t={item} />
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <div className="flex flex-col gap-2">
+      <Card shadow={showFilter ? "md" : "none"}>
+        <CardHeader className="gap-2">
+          <h2 className="font-bold text-default-500 flex-grow">Balance</h2>
+          <Spinner className={isFetching ? "" : "hidden"} size="sm" />
+          <Checkbox
+            classNames={{ base: "flex-row-reverse", wrapper: "me-0 ms-2" }}
+            isSelected={showFilter}
+            onValueChange={setShowFilter}
+          >
+            Filter
+          </Checkbox>
+        </CardHeader>
+        {showFilter ? (
+          <CardBody>
+            <DatePicker
+              color="primary"
+              value={filterDate}
+              onChange={setFilterDate as any}
+            />
+          </CardBody>
+        ) : null}
+      </Card>
+      <Table aria-label="Example table with dynamic content">
+        <TableHeader columns={columns}>
+          {(column) => (
+            <TableColumn key={column.key}>{column.label}</TableColumn>
+          )}
+        </TableHeader>
+        <TableBody items={items}>
+          {(item) => (
+            <TableRow key={item.accountName + item.commodityUnit}>
+              <TableCell>{item.accountName}</TableCell>
+              <TableCell className="text-right font-mono">
+                <Numberify amount={item.amount} t={item} />
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 function TransactionsTable(props: { selectedAccounts: string }) {
   const [betweenDates, setBetweenDates] = useState({
     start: now("utc").subtract({ days: 1 }),
-    end: now("utc"),
+    end: now("utc").add({ days: 1 }),
   });
   const { date_newest, date_oldest } = useMemo(
     () => ({

@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::ops::Sub;
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tigerbeetle_unofficial as tb;
 use validator::Validate;
 use validator::ValidationError;
@@ -270,8 +270,14 @@ pub async fn get_commodities(
     Ok(Json(res))
 }
 
+#[derive(Deserialize)]
+pub struct GetAccountBalancesQuery {
+    date: Option<usize>,
+}
+
 pub async fn get_account_balances(
     Path(filter): Path<String>,
+    Query(query): Query<GetAccountBalancesQuery>,
     State(state): State<AppState>,
 ) -> Result<Json<responses::ResponseBalances>, http_err::HttpErr> {
     let conn = state.pool.get().await.map_err(http_err::internal_error)?;
@@ -300,35 +306,86 @@ pub async fn get_account_balances(
         .map(|a| from_hex_string(a.tb_id.as_str()))
         .collect::<Vec<_>>();
 
-    let tb_accounts: Vec<tb::core::account::Account> = state
-        .tb
-        .read()
-        .await
-        .lookup_accounts(ids)
-        .await
-        .map_err(http_err::internal_error)?;
+    if let Some(date) = query.date {
+        // show balance by date
+        let timestamp_max = SystemTime::UNIX_EPOCH
+            .checked_add(Duration::from_millis(date as u64))
+            .expect("invalid time")
+            // fills nano seconds to max
+            .checked_add(Duration::from_nanos(999_999))
+            .expect("invalid time");
+        for account in accounts.iter() {
+            let filter = tb::account::Filter::new(
+                tb_utils::u128::from_hex_string(account.tb_id.as_str()),
+                1,
+            )
+            .with_flags(
+                tb::account::FilterFlags::CREDITS
+                    | tb::account::FilterFlags::DEBITS
+                    | tb::account::FilterFlags::REVERSED,
+            )
+            .with_timestamp_max(timestamp_max);
+            let tb_account_balance: Vec<tb::account::Balance> = state
+                .tb
+                .read()
+                .await
+                .get_account_balances(Box::new(filter))
+                .await
+                .map_err(http_err::internal_error)?;
 
-    for tb_account in tb_accounts.iter() {
-        let amount = (tb_account.debits_posted() as i64).sub(tb_account.credits_posted() as i64);
-        let tb_account_id = to_hex_string(tb_account.id());
-        let account = accounts
-            .iter()
-            .find(|a| a.tb_id == tb_account_id)
-            .expect("logical error unable to find account");
+            let commodity = commodities
+                .iter()
+                .find(|c| *(c.0) == (account.commodities_id as u32))
+                .expect("logical error unable to find commodity");
+            let commodity_unit = commodity.1.unit.clone();
+            let commodity_decimal = commodity.1.decimal_place;
 
-        let commodity = commodities
-            .iter()
-            .find(|c| *(c.0) == (account.commodities_id as u32))
-            .expect("logical error unable to find commodity");
-        let commodity_unit = commodity.1.unit.clone();
-        let commodity_decimal = commodity.1.decimal_place;
+            let amount = match tb_account_balance.first() {
+                Some(tb_account_balance_first) => (tb_account_balance_first.debits_posted() as i64)
+                    .sub(tb_account_balance_first.credits_posted() as i64),
+                None => 0,
+            };
 
-        balances.push(responses::Balance {
-            account_name: account.name.clone(),
-            amount,
-            commodity_unit,
-            commodity_decimal,
-        });
+            balances.push(responses::Balance {
+                account_name: account.name.clone(),
+                amount,
+                commodity_unit,
+                commodity_decimal,
+            });
+        }
+    } else {
+        //show balance total
+        let tb_accounts: Vec<tb::core::account::Account> = state
+            .tb
+            .read()
+            .await
+            .lookup_accounts(ids)
+            .await
+            .map_err(http_err::internal_error)?;
+
+        for tb_account in tb_accounts.iter() {
+            let amount =
+                (tb_account.debits_posted() as i64).sub(tb_account.credits_posted() as i64);
+            let tb_account_id = to_hex_string(tb_account.id());
+            let account = accounts
+                .iter()
+                .find(|a| a.tb_id == tb_account_id)
+                .expect("logical error unable to find account");
+
+            let commodity = commodities
+                .iter()
+                .find(|c| *(c.0) == (account.commodities_id as u32))
+                .expect("logical error unable to find commodity");
+            let commodity_unit = commodity.1.unit.clone();
+            let commodity_decimal = commodity.1.decimal_place;
+
+            balances.push(responses::Balance {
+                account_name: account.name.clone(),
+                amount,
+                commodity_unit,
+                commodity_decimal,
+            });
+        }
     }
 
     Ok(Json(balances))
