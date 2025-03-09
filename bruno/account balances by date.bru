@@ -1,0 +1,20 @@
+meta {
+  name: account balances by date
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base}}/accountbalances/{{account}}?date={{date}}
+  body: none
+  auth: none
+}
+
+params:query {
+  date: {{date}}
+}
+
+vars:pre-request {
+  account: assets:bank|revenues:work
+  date: 1741534763083
+}

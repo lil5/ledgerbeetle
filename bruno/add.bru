@@ -1,7 +1,7 @@
 meta {
   name: add
   type: http
-  seq: 6
+  seq: 5
 }
 
 put {
@@ -27,8 +27,8 @@ body:json {
 }
 
 script:pre-request {
-  const id = ()=>Math.floor(new Date().getTime() / 1000).toString(16)
+  const id = ()=>(new Date().valueOf()).toString(16)
   bru.setEnvVar("relatedId",id());
   bru.setEnvVar("transferId",id());
-  bru.setEnvVar("fullDate2",Math.floor(new Date().getTime() / 1000));
+  bru.setEnvVar("fullDate2",new Date().valueOf());
 }
