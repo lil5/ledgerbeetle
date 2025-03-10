@@ -29,7 +29,8 @@ COPY . .
 ARG CARGO_BUILD_JOBS=default
 
 RUN  --mount=type=cache,target=/usr/local/cargo/registry \
-   cargo build --release
+   --mount=type=cache,target=/app/target \
+   cargo build --release && cp /app/target/release/app /usr/bin/app
 
 COPY --from=caddy /usr/bin/caddy /usr/bin/
 
@@ -39,4 +40,4 @@ COPY --from=bun /app/dist/ /srv/
 
 EXPOSE 8080
 
-CMD [ "/bin/bash", "-c" ,"/app/target/release/app & caddy run --config /etc/caddy/Caddyfile & wait -n; exit $?"]
+CMD [ "/bin/bash", "-c" ,"/usr/bin/app & caddy run --config /etc/caddy/Caddyfile & wait -n; exit $?"]
