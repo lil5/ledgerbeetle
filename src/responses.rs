@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::time::UNIX_EPOCH;
 use std::{ops::Neg, sync::LazyLock};
+use utoipa::ToSchema;
 
 use anyhow::anyhow;
 use regex::Regex;
@@ -19,7 +20,7 @@ pub type ResponseCommodities = Vec<String>;
 pub type ResponseTransactions = Vec<Transaction>;
 pub type ResponseBalances = Vec<Balance>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ResponseIncomeStatements {
     pub dates: Vec<usize>,
@@ -38,7 +39,7 @@ pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
         .expect("invalid regex")
 });
 
-#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     /// commodity used
@@ -65,7 +66,7 @@ pub struct Transaction {
     pub credit_amount: i64,
 }
 
-#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTransactions {
     /// unix time milliseconds
@@ -75,7 +76,7 @@ pub struct AddTransactions {
     pub transactions: Vec<AddTransaction>,
 }
 
-#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTransaction {
     /// commodity used
@@ -152,7 +153,7 @@ impl Transaction {
     // }
 }
 
-#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
     pub account_name: String,
@@ -161,7 +162,7 @@ pub struct Balance {
     pub commodity_decimal: i32,
 }
 
-#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IncomeStatement {
     pub account_name: String,
