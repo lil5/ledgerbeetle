@@ -11,7 +11,7 @@ mod schema;
 mod tb_utils;
 
 use axum::{
-    routing::{get, put},
+    routing::{get, post, put},
     Router,
 };
 use deadpool_diesel::postgres::Pool;
@@ -101,6 +101,10 @@ pub async fn router() -> Router {
         .route(
             "/accountbalances/{filter}",
             get(routes::get_account_balances),
+        )
+        .route(
+            "/accountincomestatements/{filter}",
+            post(routes::get_account_income_statement),
         )
         .route("/commodities", get(routes::get_commodities))
         .route("/version", get(routes::get_version))

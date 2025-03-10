@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query};
 use axum::{extract::State, Json};
-use axum_macros::debug_handler;
+// use axum_macros::debug_handler;
 use itertools::Itertools as _;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -28,7 +28,7 @@ pub async fn get_account_names(
     Ok(Json(accounts))
 }
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn test() -> Json<Vec<Vec<i32>>> {
     let arr = vec![1, 2, 3, 4];
     let mut res: Vec<Vec<i32>> = Vec::new();
@@ -56,7 +56,7 @@ pub struct PostAddRequest {
     amount: Vec<String>,
 }
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn put_add(
     State(state): State<AppState>,
     Json(payload): Json<responses::RequestAdd>,
@@ -389,4 +389,98 @@ pub async fn get_account_balances(
     }
 
     Ok(Json(balances))
+}
+
+#[derive(Deserialize, Validate)]
+pub struct GetAccountIncomeStatementBody {
+    #[validate(length(min = 1))]
+    dates: Vec<usize>,
+}
+
+// #[debug_handler]
+pub async fn get_account_income_statement(
+    Path(filter): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<GetAccountIncomeStatementBody>,
+) -> http_err::HttpResult<Json<responses::ResponseIncomeStatements>> {
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
+
+    if !RE_ACCOUNTS_FIND.is_match(&filter) {
+        return Err(http_err::bad_error(ValidationError::new(
+            "invalid accounts search",
+        )));
+    }
+
+    let accounts: Vec<Account> = find_accounts_re(&conn, filter).await?;
+    println!(
+        "accounts found: {}",
+        accounts.iter().map(|a| a.id).join(", ")
+    );
+    let commodities = list_all_commodities(&conn).await?;
+    let commodities = commodities
+        .iter()
+        .map(|c| (c.tb_ledger as u32, c))
+        .collect::<HashMap<_, _>>();
+
+    let dates: Vec<SystemTime> = body
+        .dates
+        .iter()
+        .map(|date| {
+            SystemTime::UNIX_EPOCH
+                .checked_add(Duration::from_millis(*date as u64))
+                .expect("invalid time")
+                // fills nano seconds to max
+                .checked_add(Duration::from_nanos(999_999))
+                .expect("invalid time")
+        })
+        .collect();
+
+    let mut income_statements: Vec<responses::IncomeStatement> = Vec::new();
+    // show balance by date
+    let dates_len = dates.len();
+    for account in accounts.iter() {
+        let mut amounts = Vec::with_capacity(dates_len);
+        let commodity = commodities
+            .iter()
+            .find(|c| *(c.0) == (account.commodities_id as u32))
+            .expect("logical error unable to find commodity");
+        let commodity_unit = commodity.1.unit.clone();
+        let commodity_decimal = commodity.1.decimal_place;
+        for timestamp_max in dates.iter() {
+            let filter = tb::account::Filter::new(
+                tb_utils::u128::from_hex_string(account.tb_id.as_str()),
+                1,
+            )
+            .with_flags(
+                tb::account::FilterFlags::CREDITS
+                    | tb::account::FilterFlags::DEBITS
+                    | tb::account::FilterFlags::REVERSED,
+            )
+            .with_timestamp_max(*timestamp_max);
+            let tb_account_balance: Vec<tb::account::Balance> = state
+                .tb
+                .read()
+                .await
+                .get_account_balances(Box::new(filter))
+                .await
+                .map_err(http_err::internal_error)?;
+
+            let amount = match tb_account_balance.first() {
+                Some(tb_account_balance_first) => (tb_account_balance_first.debits_posted() as i64)
+                    .sub(tb_account_balance_first.credits_posted() as i64),
+                None => 0,
+            };
+            amounts.push(amount);
+        }
+        income_statements.push(responses::IncomeStatement {
+            account_name: account.name.clone(),
+            amounts,
+            commodity_unit,
+            commodity_decimal,
+        });
+    }
+    Ok(Json(responses::ResponseIncomeStatements {
+        dates: body.dates,
+        income_statements,
+    }))
 }

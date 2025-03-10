@@ -19,6 +19,13 @@ pub type ResponseCommodities = Vec<String>;
 pub type ResponseTransactions = Vec<Transaction>;
 pub type ResponseBalances = Vec<Balance>;
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResponseIncomeStatements {
+    pub dates: Vec<usize>,
+    pub income_statements: Vec<IncomeStatement>,
+}
+
 // Types
 // ------------------------------------
 
@@ -150,6 +157,15 @@ impl Transaction {
 pub struct Balance {
     pub account_name: String,
     pub amount: i64,
+    pub commodity_unit: String,
+    pub commodity_decimal: i32,
+}
+
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IncomeStatement {
+    pub account_name: String,
+    pub amounts: Vec<i64>,
     pub commodity_unit: String,
     pub commodity_decimal: i32,
 }

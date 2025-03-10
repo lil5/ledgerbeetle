@@ -1,0 +1,24 @@
+meta {
+  name: account income statements
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base}}/accountincomestatements/{{account}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  account: assets:bank|revenues:work
+  dates: 1741534763083,1741534763000
+}
+
+script:pre-request {
+  const dates = bru.getRequestVar("dates").split(",").map(d=>parseInt(d));
+  req.setBody(JSON.stringify({
+    "dates": dates,
+  }));
+  req.setHeader("Content-Type", "application/json");
+}
