@@ -31,10 +31,14 @@ import { useAccountNames } from "@/api/accountnames";
 import DefaultLayout from "@/layouts/default";
 import { useAccountTransactions } from "@/api/accounttransactions";
 import { useAccountBalances } from "@/api/accountbalances";
+import useStoreHook from "@/stores/hook";
+import { selectedAccountsStore } from "@/stores/selected-accounts-store";
+import Numberify from "@/components/numberify";
 
 export default function IndexPage() {
   const queryAccountNames = useAccountNames();
-  const [search, setSearch] = useState("");
+  const [isOpenTooltip, setIsOpenTooltip] = useState(false);
+  const [search, setSearch] = useStoreHook(selectedAccountsStore);
   const [searchDebounce] = useDebounceValue(search, 1300, { trailing: true });
   const [selectedAccountNames, setSelectedAccountNames] = useState(
     new Set([] as string[]),
@@ -48,75 +52,82 @@ export default function IndexPage() {
   const _setSelectedAccountNames = (s: Set<string>) => {
     setSelectedAccountNames(s);
 
-    setSearch([...s].map((s) => s + "**").join("|"));
+    setSearch(() => [...s].map((s) => s + "**").join("|"));
   };
 
   return (
     <DefaultLayout>
       <div className="flex justify-between w-full flex-wrap md:flex-nowrap gap-4">
-        <Card className="w-full md:w-1/2 lg:w-1/3 p-2 gap-1 flex flex-col relative overflow-visible">
-          <Input
-            endContent={
-              <Tooltip
-                content={
-                  <div className="px-1 py-2">
-                    <div className="text-small font-bold mb-2">
-                      Filter symbols
+        <div className="w-full md:w-1/2 lg:w-1/3">
+          <Card className="p-2 gap-1 flex flex-col relative overflow-visible">
+            <Input
+              endContent={
+                <Tooltip
+                  isOpen={isOpenTooltip}
+                  content={
+                    <div className="px-1 py-2">
+                      <div className="text-small font-bold mb-2">
+                        Filter symbols
+                      </div>
+                      <div className="text-tiny">
+                        <ul className="space-y-2">
+                          <li>
+                            <Code className="text-xs">*</Code> select any
+                            character
+                          </li>
+                          <li>
+                            <Code className="text-xs">**</Code> select zero or
+                            more characters
+                          </li>
+                          <li>
+                            <Code className="text-xs">|</Code> match either left
+                            or right of it
+                          </li>
+                        </ul>
+                      </div>
                     </div>
-                    <div className="text-tiny">
-                      <ul className="space-y-2">
-                        <li>
-                          <Code className="text-xs">*</Code> select any
-                          character
-                        </li>
-                        <li>
-                          <Code className="text-xs">**</Code> select zero or
-                          more characters
-                        </li>
-                        <li>
-                          <Code className="text-xs">|</Code> match either left
-                          or right of it
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                }
-                offset={15}
-                placement="right-start"
-              >
-                <Button
-                  isIconOnly
-                  color="primary"
-                  radius="md"
-                  size="sm"
-                  variant="light"
+                  }
+                  offset={15}
+                  placement="right-start"
                 >
-                  <InfoIcon size={16} />
-                </Button>
-              </Tooltip>
-            }
-            value={search}
-            onValueChange={setSearch}
-          />
-          <h1 className="mx-2 text-sm text-default-500 pt-1">
-            Select one or many accounts:
-          </h1>
-          <Listbox
-            isVirtualized
-            classNames={{ list: "w-full h-60" }}
-            items={items}
-            label={"Select from 1000 items"}
-            selectedKeys={selectedAccountNames}
-            selectionMode="multiple"
-            virtualization={{
-              maxListboxHeight: 400,
-              itemHeight: 40,
-            }}
-            onSelectionChange={_setSelectedAccountNames as any}
-          >
-            {(item) => <ListboxItem key={item.text}>{item.text}</ListboxItem>}
-          </Listbox>
-        </Card>
+                  <Button
+                    isIconOnly
+                    color="primary"
+                    radius="md"
+                    size="sm"
+                    variant="light"
+                    onBlur={() => setIsOpenTooltip(false)}
+                    onFocus={() => setIsOpenTooltip(true)}
+                    onMouseEnter={() => setIsOpenTooltip(true)}
+                    onMouseLeave={() => setIsOpenTooltip(false)}
+                  >
+                    <InfoIcon size={16} />
+                  </Button>
+                </Tooltip>
+              }
+              value={search}
+              onValueChange={(s) => setSearch(() => s)}
+            />
+            <h1 className="mx-2 text-sm text-default-500 pt-1">
+              Select one or many accounts:
+            </h1>
+            <Listbox
+              isVirtualized
+              classNames={{ list: "w-full h-60" }}
+              items={items}
+              label={"Select from 1000 items"}
+              selectedKeys={selectedAccountNames}
+              selectionMode="multiple"
+              virtualization={{
+                maxListboxHeight: 400,
+                itemHeight: 40,
+              }}
+              onSelectionChange={_setSelectedAccountNames as any}
+            >
+              {(item) => <ListboxItem key={item.text}>{item.text}</ListboxItem>}
+            </Listbox>
+          </Card>
+        </div>
 
         <div className="w-full md:w-1/2 lg:w-1/3">
           <BalanceTable selectedAccounts={searchDebounce} />
@@ -150,47 +161,51 @@ function BalanceTable(props: { selectedAccounts: string }) {
   ];
 
   return (
-    <div className="flex flex-col gap-2">
-      <Card shadow={showFilter ? "md" : "none"}>
-        <CardHeader className="gap-2">
-          <h2 className="font-bold text-default-500 flex-grow">Balance</h2>
-          <Spinner className={isFetching ? "" : "hidden"} size="sm" />
-          <Checkbox
-            classNames={{ base: "flex-row-reverse", wrapper: "me-0 ms-2" }}
-            isSelected={showFilter}
-            onValueChange={setShowFilter}
-          >
-            Filter
-          </Checkbox>
-        </CardHeader>
+    <Card>
+      <CardHeader className="gap-2 pb-0">
+        <h2 className="font-bold text-default-500 flex-grow">Balance</h2>
+        <Spinner className={isFetching ? "" : "hidden"} size="sm" />
+        <Checkbox
+          classNames={{ base: "flex-row-reverse", wrapper: "me-0 ms-2" }}
+          color="secondary"
+          isSelected={showFilter}
+          onValueChange={setShowFilter}
+        >
+          Filter
+        </Checkbox>
+      </CardHeader>
+      <CardBody className="gap-4">
         {showFilter ? (
-          <CardBody>
-            <DatePicker
-              color="primary"
-              value={filterDate}
-              onChange={setFilterDate as any}
-            />
-          </CardBody>
+          <DatePicker
+            color="secondary"
+            value={filterDate}
+            onChange={setFilterDate as any}
+          />
         ) : null}
-      </Card>
-      <Table aria-label="Example table with dynamic content">
-        <TableHeader columns={columns}>
-          {(column) => (
-            <TableColumn key={column.key}>{column.label}</TableColumn>
-          )}
-        </TableHeader>
-        <TableBody items={items}>
-          {(item) => (
-            <TableRow key={item.accountName + item.commodityUnit}>
-              <TableCell>{item.accountName}</TableCell>
-              <TableCell className="text-right font-mono">
-                <Numberify amount={item.amount} t={item} />
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+
+        <Table
+          isStriped
+          removeWrapper
+          aria-label="Example table with dynamic content"
+        >
+          <TableHeader columns={columns}>
+            {(column) => (
+              <TableColumn key={column.key}>{column.label}</TableColumn>
+            )}
+          </TableHeader>
+          <TableBody items={items}>
+            {(item) => (
+              <TableRow key={item.accountName + item.commodityUnit}>
+                <TableCell>{item.accountName}</TableCell>
+                <TableCell className="text-right font-mono">
+                  <Numberify amount={item.amount} t={item} />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardBody>
+    </Card>
   );
 }
 function TransactionsTable(props: { selectedAccounts: string }) {
@@ -235,6 +250,7 @@ function TransactionsTable(props: { selectedAccounts: string }) {
 
   return (
     <Table
+      isStriped
       aria-label="Example table with dynamic content"
       bottomContent={
         <div className="flex flex-col gap-2 items-center">
@@ -307,23 +323,4 @@ function TransactionsTable(props: { selectedAccounts: string }) {
       </TableBody>
     </Table>
   );
-}
-
-function Numberify(props: {
-  t: { commodityDecimal: number; commodityUnit: string };
-  amount: number;
-}) {
-  let n = Decimal(props.amount);
-
-  if (props.t.commodityDecimal != 0) {
-    n = n.div(Math.pow(10, props.t.commodityDecimal));
-  }
-
-  let str = n.toFixed(props.t.commodityDecimal);
-
-  if (props.t.commodityUnit) {
-    str = str + " " + props.t.commodityUnit;
-  }
-
-  return str;
 }
