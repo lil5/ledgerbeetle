@@ -1,0 +1,593 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ledgerbeetle",
+    "description": "",
+    "license": {
+      "name": ""
+    },
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/accountbalances/{filter}": {
+      "get": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "get_account_balances",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          {
+            "name": "filter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns list of account balances by filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Balance"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accountincomestatements/{filter}": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "get_account_income_statement",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetAccountIncomeStatementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns list of balances by filter by date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseIncomeStatements"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accountnames": {
+      "get": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "get_account_names",
+        "responses": {
+          "200": {
+            "description": "Returns list of transaction ids",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounttransactions/{filter}": {
+      "get": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "get_transactions",
+        "parameters": [
+          {
+            "name": "date_newest",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "date_oldest",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "filter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns list of transactions by filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Transaction"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/add": {
+      "put": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "put_add",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTransactions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns list of transaction ids",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Vec"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/commodities": {
+      "get": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "get_commodities",
+        "responses": {
+          "200": {
+            "description": "Returns list of commodities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "get_version",
+        "responses": {
+          "200": {
+            "description": "Returns crate version",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddTransaction": {
+        "type": "object",
+        "required": [
+          "commodityUnit",
+          "code",
+          "relatedId",
+          "debitAccount",
+          "creditAccount",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "amount added to debit account"
+          },
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "transaction code"
+          },
+          "commodityUnit": {
+            "type": "string",
+            "description": "commodity used"
+          },
+          "creditAccount": {
+            "type": "string",
+            "description": "account name"
+          },
+          "debitAccount": {
+            "type": "string",
+            "description": "account name"
+          },
+          "relatedId": {
+            "type": "string",
+            "description": "random hex u128 string"
+          }
+        }
+      },
+      "AddTransactions": {
+        "type": "object",
+        "required": [
+          "fullDate2",
+          "transactions"
+        ],
+        "properties": {
+          "fullDate2": {
+            "type": "integer",
+            "format": "int64",
+            "description": "unix time milliseconds"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddTransaction"
+            },
+            "description": "list of transactions"
+          }
+        }
+      },
+      "Balance": {
+        "type": "object",
+        "required": [
+          "accountName",
+          "amount",
+          "commodityUnit",
+          "commodityDecimal"
+        ],
+        "properties": {
+          "accountName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "commodityDecimal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "commodityUnit": {
+            "type": "string"
+          }
+        }
+      },
+      "GetAccountIncomeStatementBody": {
+        "type": "object",
+        "required": [
+          "dates"
+        ],
+        "properties": {
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "IncomeStatement": {
+        "type": "object",
+        "required": [
+          "accountName",
+          "amounts",
+          "commodityUnit",
+          "commodityDecimal"
+        ],
+        "properties": {
+          "accountName": {
+            "type": "string"
+          },
+          "amounts": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "commodityDecimal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "commodityUnit": {
+            "type": "string"
+          }
+        }
+      },
+      "ResponseIncomeStatements": {
+        "type": "object",
+        "required": [
+          "dates",
+          "incomeStatements"
+        ],
+        "properties": {
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "incomeStatements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeStatement"
+            }
+          }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "required": [
+          "commodityUnit",
+          "commodityDecimal",
+          "code",
+          "fullDate",
+          "fullDate2",
+          "relatedId",
+          "transferId",
+          "debitAccount",
+          "creditAccount",
+          "debitAmount",
+          "creditAmount"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "transaction code"
+          },
+          "commodityDecimal": {
+            "type": "integer",
+            "format": "int32",
+            "description": "location of decimal point"
+          },
+          "commodityUnit": {
+            "type": "string",
+            "description": "commodity used"
+          },
+          "creditAccount": {
+            "type": "string",
+            "description": "account name"
+          },
+          "creditAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "amount removed from credit account"
+          },
+          "debitAccount": {
+            "type": "string",
+            "description": "account name"
+          },
+          "debitAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "amount added to debit account"
+          },
+          "fullDate": {
+            "type": "integer",
+            "format": "int64",
+            "description": "unix time milliseconds"
+          },
+          "fullDate2": {
+            "type": "integer",
+            "format": "int64",
+            "description": "unit time milliseconds"
+          },
+          "relatedId": {
+            "type": "string",
+            "description": "random hex u128 string"
+          },
+          "transferId": {
+            "type": "string",
+            "description": "random hex u128 string"
+          }
+        }
+      },
+      "Vec": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

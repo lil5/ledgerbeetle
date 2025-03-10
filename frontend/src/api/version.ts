@@ -1,13 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
+
+import { getVersion } from "@/client";
+
 export function useVersion() {
   return useQuery({
     queryKey: ["version"],
     queryFn: async (): Promise<string> => {
-      const response = await fetch("/api/version");
+      const { data, error } = await getVersion({});
 
-      if (response.status != 200) throw await response.text();
+      if (error) throw error;
 
-      return await response.json();
+      return data!;
     },
   });
 }

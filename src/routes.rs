@@ -1,4 +1,7 @@
+use axum::body::Body;
 use axum::extract::{Path, Query};
+use axum::http::StatusCode;
+use axum::response::Response;
 use axum::{extract::State, Json};
 // use axum_macros::debug_handler;
 use itertools::Itertools as _;
@@ -7,6 +10,7 @@ use std::collections::HashMap;
 use std::ops::Sub;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tigerbeetle_unofficial as tb;
+use utoipa::{IntoParams, OpenApi, ToSchema};
 use validator::Validate;
 use validator::ValidationError;
 
@@ -16,8 +20,13 @@ use crate::models::{find_accounts_re, TB_MAX_BATCH_SIZE};
 use crate::models::{list_all_commodities, list_all_commodity_units};
 use crate::responses::{RE_ACCOUNTS_FIND, RE_DATE};
 use crate::tb_utils::u128::{from_hex_string, to_hex_string};
-use crate::{http_err, models, responses, tb_utils, AppState};
+use crate::{http_err, models, responses, tb_utils, ApiDoc, AppState};
 
+#[utoipa::path(get, path = "/accountnames", responses(
+    (status = 200, description = "Returns list of transaction ids", body = responses::Vec<String>),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
 pub async fn get_account_names(
     State(state): State<AppState>,
 ) -> http_err::HttpResult<Json<responses::ResponseAccountNames>> {
@@ -40,6 +49,23 @@ pub async fn test() -> Json<Vec<Vec<i32>>> {
     Json(res)
 }
 
+// #[debug_handler]
+pub async fn get_openapi() -> http_err::HttpResult<Response<Body>> {
+    let openapi_json = ApiDoc::openapi()
+        .to_pretty_json()
+        .map_err(|e| http_err::bad_error(e))?;
+
+    let res = Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(openapi_json))
+        .unwrap();
+    Ok(res)
+}
+
+#[utoipa::path(get, path = "/version", responses(
+    (status = 200, description = "Returns crate version", body = String),
+))]
 pub async fn get_version() -> Json<String> {
     Json(clap::crate_version!().to_string())
 }
@@ -57,6 +83,11 @@ pub struct PostAddRequest {
 }
 
 // #[debug_handler]
+#[utoipa::path(put, path = "/add", responses(
+    (status = 200, description = "Returns list of transaction ids", body = responses::ResponseAdd),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
 pub async fn put_add(
     State(state): State<AppState>,
     Json(payload): Json<responses::RequestAdd>,
@@ -135,12 +166,17 @@ pub struct GetTransactionsRequest {
     filter: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct GetTransactionsQuery {
     date_newest: usize,
     date_oldest: usize,
 }
 
+#[utoipa::path(get, path = "/accounttransactions/{filter}", params(GetTransactionsQuery), responses(
+    (status = 200, description = "Returns list of transactions by filter", body=Vec<responses::Transaction>),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
 pub async fn get_transactions(
     Path(filter): Path<String>,
     Query(query): Query<GetTransactionsQuery>,
@@ -261,6 +297,11 @@ pub async fn get_transactions(
     Ok(Json(transactions))
 }
 
+#[utoipa::path(get, path = "/commodities", responses(
+    (status = 200, description = "Returns list of commodities", body=Vec<String>),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
 pub async fn get_commodities(
     State(state): State<AppState>,
 ) -> Result<Json<responses::ResponseCommodities>, http_err::HttpErr> {
@@ -270,11 +311,16 @@ pub async fn get_commodities(
     Ok(Json(res))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct GetAccountBalancesQuery {
     date: Option<usize>,
 }
 
+#[utoipa::path(get, path = "/accountbalances/{filter}", params(GetAccountBalancesQuery), responses(
+    (status = 200, description = "Returns list of account balances by filter", body=Vec<responses::Balance>),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
 pub async fn get_account_balances(
     Path(filter): Path<String>,
     Query(query): Query<GetAccountBalancesQuery>,
@@ -391,13 +437,18 @@ pub async fn get_account_balances(
     Ok(Json(balances))
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct GetAccountIncomeStatementBody {
     #[validate(length(min = 1))]
     dates: Vec<usize>,
 }
 
 // #[debug_handler]
+#[utoipa::path(post, path = "/accountincomestatements/{filter}", responses(
+    (status = 200, description = "Returns list of balances by filter by date", body=responses::ResponseIncomeStatements),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
 pub async fn get_account_income_statement(
     Path(filter): Path<String>,
     State(state): State<AppState>,

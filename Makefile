@@ -23,3 +23,6 @@ dev:
 	make dev-docker-start 
 	make dev-be-start & make dev-fe-start & wait
 start: dev
+
+gen-openapi:
+	wget -O openapi.json http://localhost:5173/api/openapi

@@ -20,8 +20,21 @@ use dotenvy::dotenv;
 use regex::Regex;
 use tigerbeetle_unofficial as tb;
 use tokio::sync::RwLock;
+use utoipa::OpenApi;
 
 extern crate clap;
+
+#[derive(OpenApi)]
+#[openapi(paths(
+    routes::get_version,
+    routes::put_add,
+    routes::get_transactions,
+    routes::get_commodities,
+    routes::get_account_balances,
+    routes::get_account_names,
+    routes::get_account_income_statement,
+))]
+struct ApiDoc;
 
 // this embeds the migrations into the application binary
 // the migration path is relative to the `CARGO_MANIFEST_DIR`
@@ -108,5 +121,6 @@ pub async fn router() -> Router {
         )
         .route("/commodities", get(routes::get_commodities))
         .route("/version", get(routes::get_version))
+        .route("/openapi", get(routes::get_openapi))
         .with_state(app_state)
 }

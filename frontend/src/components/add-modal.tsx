@@ -23,8 +23,9 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import { AddTransaction, useAddTransactions } from "@/api/add";
+import { useAddTransactions } from "@/api/add";
 import { useAccountNames } from "@/api/accountnames";
+import { AddTransaction } from "@/client";
 
 const RE_IS_ACCOUNT = /^(assets|liabilities|equity|revenues|expenses):.*/;
 const RE_HEXADECIMAL = /^[a-f0-9]{1,31}$/;

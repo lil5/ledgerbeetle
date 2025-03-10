@@ -1,4 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { AddTransactions, putAdd } from "@/client";
+
 export function useAddTransactions() {
   const queryClient = useQueryClient();
 
@@ -7,35 +10,17 @@ export function useAddTransactions() {
     mutationFn: async (
       add_transactions: AddTransactions,
     ): Promise<string[]> => {
-      const response = await fetch("/api/add", {
-        method: "PUT",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(add_transactions),
+      const { data, error } = await putAdd({
+        body: add_transactions,
       });
 
-      if (response.status != 200) throw await response.text();
+      if (error) throw error;
 
-      return await response.json();
+      return data!;
     },
     onSuccess: () => {
       // Invalidate and refetch
       queryClient.invalidateQueries();
     },
   });
-}
-
-export interface AddTransactions {
-  fullDate2: number;
-  transactions: AddTransaction[];
-}
-
-export interface AddTransaction {
-  code: number;
-  commodityUnit: string;
-  relatedId: string;
-  debitAccount: string;
-  creditAccount: string;
-  amount: number;
 }

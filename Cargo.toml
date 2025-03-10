@@ -26,4 +26,5 @@ regex = "1.11.1"
 serde = "1.0.218"
 tigerbeetle-unofficial = { version = "=0.8.0" } #, path="tigerbeetle-unofficial"}
 tokio = { version = "1.0", features = ["full"] }
+utoipa = { version = "5.3.1", features = ["axum_extras"] }
 validator = { version = "0.20.0", features = ["derive"] }
