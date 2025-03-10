@@ -18,7 +18,7 @@ import {
   TableCell,
   ModalFooter,
 } from "@heroui/react";
-import { now } from "@internationalized/date";
+import { fromDate, ZonedDateTime } from "@internationalized/date";
 import { PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import dayjs from "dayjs";
@@ -70,6 +70,15 @@ function IncomeStatementForm() {
     { key: crypto.randomUUID(), d: dayjs().valueOf() },
     { key: crypto.randomUUID(), d: dayjs().subtract(7, "days").valueOf() },
   ]);
+  const setZonedDate = (key: string, zd: ZonedDateTime) => {
+    setDates((s) =>
+      s.map((item) => {
+        if (item.key !== key) return item;
+
+        return { ...item, d: zd.toDate().valueOf() };
+      }),
+    );
+  };
   const addDate = () => {
     setDates((s) => [
       ...s,
@@ -110,9 +119,10 @@ function IncomeStatementForm() {
                 <CardBody className="gap-2">
                   <p className="text-sm">Date {i + 1}</p>
                   <DateInput
-                    defaultValue={now("Europe/Amsterdam")}
                     label="Date"
                     name={"date" + i}
+                    value={fromDate(new Date(d.d), "Europe/Amsterdam")}
+                    onChange={(zd) => setZonedDate(d.key, zd!)}
                   />
                 </CardBody>
                 <CardFooter className="justify-end">
