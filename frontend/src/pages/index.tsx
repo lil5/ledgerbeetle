@@ -22,7 +22,6 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { now } from "@internationalized/date";
-import Decimal from "decimal.js";
 import dayjs from "dayjs";
 import { useDebounceValue } from "usehooks-ts";
 import { InfoIcon } from "lucide-react";
@@ -63,7 +62,6 @@ export default function IndexPage() {
             <Input
               endContent={
                 <Tooltip
-                  isOpen={isOpenTooltip}
                   content={
                     <div className="px-1 py-2">
                       <div className="text-small font-bold mb-2">
@@ -87,6 +85,7 @@ export default function IndexPage() {
                       </div>
                     </div>
                   }
+                  isOpen={isOpenTooltip}
                   offset={15}
                   placement="right-start"
                 >
