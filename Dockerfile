@@ -29,7 +29,6 @@ COPY . .
 ARG CARGO_BUILD_JOBS=default
 
 RUN  --mount=type=cache,target=/usr/local/cargo/registry \
-   --mount=type=cache,target=/app/target \
    cargo build --release
 
 COPY --from=caddy /usr/bin/caddy /usr/bin/
