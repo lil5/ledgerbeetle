@@ -17,6 +17,9 @@ services:
   app:
     build:
       context: .
+      # args:
+      #   # limit the amount of threads used to compile rust binary
+      #   - CARGO_BUILD_JOBS=2
     env_file:
       - /dev/null
     depends_on:
