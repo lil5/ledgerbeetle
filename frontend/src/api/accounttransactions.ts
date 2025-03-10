@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+
+import { getTransactions, Transaction } from "@/client";
+
 export function useAccountTransactions(
   accounts_re: string,
   date_newest: number,
@@ -7,31 +10,15 @@ export function useAccountTransactions(
   return useQuery({
     initialData: [],
     queryKey: ["accounttransactions", accounts_re, date_newest, date_oldest],
-    queryFn: async (): Promise<Transactions> => {
-      const response = await fetch(
-        `/api/accounttransactions/${accounts_re}?date_newest=${date_newest}&date_oldest=${date_oldest}`,
-      );
+    queryFn: async (): Promise<Transaction[]> => {
+      const { data, error } = await getTransactions({
+        path: { filter: accounts_re },
+        query: { date_newest, date_oldest },
+      });
 
-      if (response.status != 200) throw await response.text();
+      if (error) throw error;
 
-      return await response.json();
+      return data!;
     },
   });
-}
-
-export type Transactions = Transaction[];
-
-export interface Transaction {
-  commodityUnit: string;
-  commodityDecimal: number;
-  code: number;
-  fullDate: number;
-  fullDateSubNano: number;
-  fullDate2: number;
-  relatedId: string;
-  transferId: string;
-  debitAccount: string;
-  creditAccount: string;
-  debitAmount: number;
-  creditAmount: number;
 }

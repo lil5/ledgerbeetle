@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+
+import { getAccountBalances } from "@/client";
+
 export function useAccountBalances(
   accounts_re: string,
   filterDateIfTrue: null | number = null,
@@ -7,15 +10,18 @@ export function useAccountBalances(
     initialData: [],
     queryKey: ["accountbalances", accounts_re, filterDateIfTrue],
     queryFn: async (): Promise<Balances> => {
-      const response = await fetch(
-        "/api/accountbalances/" +
-          accounts_re +
-          (filterDateIfTrue ? `?date=${filterDateIfTrue}` : ""),
-      );
+      const { data, error } = await getAccountBalances({
+        path: {
+          filter: accounts_re,
+        },
+        query: {
+          date: filterDateIfTrue ? filterDateIfTrue : undefined,
+        },
+      });
 
-      if (response.status != 200) throw await response.text();
+      if (error) throw error;
 
-      return await response.json();
+      return data!;
     },
   });
 }

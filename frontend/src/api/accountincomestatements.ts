@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+
+import { getAccountIncomeStatement } from "@/client";
+
 export function useAccountIncomeStatements(
   accounts_re: string,
   dates: number[],
@@ -10,18 +13,14 @@ export function useAccountIncomeStatements(
     },
     queryKey: ["accountincomestatements", accounts_re, dates.join(",")],
     queryFn: async (): Promise<IncomeStatements> => {
-      const response = await fetch(
-        "/api/accountincomestatements/" + accounts_re,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dates }),
-        },
-      );
+      const { data, error } = await getAccountIncomeStatement({
+        path: { filter: accounts_re },
+        body: { dates },
+      });
 
-      if (response.status != 200) throw await response.text();
+      if (error) throw error;
 
-      return await response.json();
+      return data!;
     },
   });
 }
