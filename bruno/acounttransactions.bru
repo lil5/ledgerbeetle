@@ -5,9 +5,14 @@ meta {
 }
 
 get {
-  url: {{base}}/accounttransactions/{{account}}
+  url: {{base}}/accounttransactions/{{account}}?date_newest=1742568867511&date_oldest=1642560867511
   body: none
   auth: none
+}
+
+params:query {
+  date_newest: 1742568867511
+  date_oldest: 1642560867511
 }
 
 vars:pre-request {
