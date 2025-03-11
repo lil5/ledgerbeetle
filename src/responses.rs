@@ -35,7 +35,7 @@ pub static RE_DATE: LazyLock<Regex> =
 pub static RE_ACCOUNTS_FIND: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").expect("invalid regex"));
 pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(assets|liabilities|equity|revenues|expenses):([a-z0-9]+:)*([a-z0-9]+)$")
+    Regex::new(r"^(a|l|e|r|x):([a-z0-9]+:)*([a-z0-9]+)$")
         .expect("invalid regex")
 });
 

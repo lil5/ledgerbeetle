@@ -63,26 +63,42 @@ export default function IndexPage() {
               endContent={
                 <Tooltip
                   content={
-                    <div className="px-1 py-2">
-                      <div className="text-small font-bold mb-2">
-                        Filter symbols
+                    <div className="px-1 py-2 space-y-2">
+                      <div className="text-small font-bold">Filter symbols</div>
+                      <ul className="space-y-2 text-tiny">
+                        <li>
+                          <Code className="text-xs">*</Code> select any
+                          character
+                        </li>
+                        <li>
+                          <Code className="text-xs">**</Code> select zero or
+                          more characters
+                        </li>
+                        <li>
+                          <Code className="text-xs">|</Code> match either left
+                          or right of it
+                        </li>
+                      </ul>
+                      <div className="text-small font-bold">
+                        Account prefix symbols
                       </div>
-                      <div className="text-tiny">
-                        <ul className="space-y-2">
-                          <li>
-                            <Code className="text-xs">*</Code> select any
-                            character
-                          </li>
-                          <li>
-                            <Code className="text-xs">**</Code> select zero or
-                            more characters
-                          </li>
-                          <li>
-                            <Code className="text-xs">|</Code> match either left
-                            or right of it
-                          </li>
-                        </ul>
-                      </div>
+                      <ul className="space-y-2 text-tiny">
+                        <li>
+                          <Code className="text-xs">a</Code> Assets
+                        </li>
+                        <li>
+                          <Code className="text-xs">l</Code> Liabilities
+                        </li>
+                        <li>
+                          <Code className="text-xs">e</Code> Equity
+                        </li>
+                        <li>
+                          <Code className="text-xs">r</Code> Revenues
+                        </li>
+                        <li>
+                          <Code className="text-xs">x</Code> Expenses
+                        </li>
+                      </ul>
                     </div>
                   }
                   isOpen={isOpenTooltip}

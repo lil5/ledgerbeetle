@@ -258,11 +258,11 @@ pub async fn list_all_commodities(conn: &Object) -> Result<Vec<Commodities>, htt
     .map_err(http_err::internal_error)?
 }
 
-const ACCOUNT_TYPE_ASSETS: &str = "assets";
-const ACCOUNT_TYPE_LIABILITIES: &str = "liabilities";
-const ACCOUNT_TYPE_EQUITY: &str = "equity";
-const ACCOUNT_TYPE_REVENUES: &str = "revenues";
-const ACCOUNT_TYPE_EXPENSES: &str = "expenses";
+const ACCOUNT_TYPE_ASSETS: &str = "a";
+const ACCOUNT_TYPE_LIABILITIES: &str = "l";
+const ACCOUNT_TYPE_EQUITY: &str = "e";
+const ACCOUNT_TYPE_REVENUES: &str = "r";
+const ACCOUNT_TYPE_EXPENSES: &str = "x";
 pub enum AccountType {
     Assets,
     Liabilities,

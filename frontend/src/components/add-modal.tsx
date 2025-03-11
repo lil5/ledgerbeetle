@@ -27,7 +27,7 @@ import { useAddTransactions } from "@/api/add";
 import { useAccountNames } from "@/api/accountnames";
 import { AddTransaction } from "@/client";
 
-const RE_IS_ACCOUNT = /^(assets|liabilities|equity|revenues|expenses):.*/;
+const RE_IS_ACCOUNT = /^(a|l|e|r|x):.*/;
 const RE_HEXADECIMAL = /^[a-f0-9]{1,31}$/;
 
 const zodAddTransaction = z.object({
@@ -248,7 +248,7 @@ export default function AddModal() {
                 <Button color="danger" variant="light" onPress={onClose}>
                   Close
                 </Button>
-                <Button color="primary" type="submit" isLoading={submitLoading}>
+                <Button color="primary" isLoading={submitLoading} type="submit">
                   Submit
                 </Button>
               </ModalFooter>
@@ -260,13 +260,7 @@ export default function AddModal() {
   );
 }
 
-const DEFAULT_ACCOUNT_NAMES = [
-  "assets",
-  "liabilities",
-  "equity",
-  "revenues",
-  "expenses",
-];
+const DEFAULT_ACCOUNT_NAMES = ["a", "l", "e", "r", "x"];
 
 function AutocompleteAccountNames(props: {
   name: string;
