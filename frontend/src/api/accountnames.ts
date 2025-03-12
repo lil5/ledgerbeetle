@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getAccountNames } from "@/client";
+import { queryAccountNamesAll } from "@/client";
 
 export function useAccountNames() {
   return useQuery({
     queryKey: ["accountnames"],
-    queryFn: async (): Promise<Array<string>> => {
-      const { data, error } = await getAccountNames({});
+    queryFn: async () => {
+      const { data, error } = await queryAccountNamesAll({});
 
       if (error) throw error;
 

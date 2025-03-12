@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getAccountIncomeStatement } from "@/client";
+import { queryAccountIncomeStatement } from "@/client";
 
 export function useAccountIncomeStatements(
-  accounts_re: string,
+  accounts_glob: string,
   dates: number[],
 ) {
   return useQuery({
@@ -11,11 +11,10 @@ export function useAccountIncomeStatements(
       dates: [],
       incomeStatements: [],
     },
-    queryKey: ["accountincomestatements", accounts_re, dates.join(",")],
-    queryFn: async (): Promise<IncomeStatements> => {
-      const { data, error } = await getAccountIncomeStatement({
-        path: { filter: accounts_re },
-        body: { dates },
+    queryKey: ["accountincomestatements", accounts_glob, dates.join(",")],
+    queryFn: async () => {
+      const { data, error } = await queryAccountIncomeStatement({
+        body: { dates, accounts_glob },
       });
 
       if (error) throw error;
@@ -23,16 +22,4 @@ export function useAccountIncomeStatements(
       return data!;
     },
   });
-}
-
-export interface IncomeStatements {
-  dates: number[];
-  incomeStatements: IncomeStatement[];
-}
-
-export interface IncomeStatement {
-  accountName: string;
-  amounts: number[];
-  commodityUnit: string;
-  commodityDecimal: number;
 }

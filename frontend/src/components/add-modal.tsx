@@ -16,16 +16,23 @@ import {
   AutocompleteItem,
   Input,
   Alert,
+  Checkbox,
+  Textarea,
 } from "@heroui/react";
 import { now, parseZonedDateTime } from "@internationalized/date";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-import { useAddTransactions } from "@/api/add";
+import { useAddTransactions, useAddTransactionsGlob } from "@/api/add";
 import { useAccountNames } from "@/api/accountnames";
-import { AddTransaction } from "@/client";
+import {
+  AddFilterTransaction,
+  AddFilterTransactions,
+  AddTransaction,
+  AddTransactions,
+} from "@/client";
 
 const RE_IS_ACCOUNT = /^(a|l|e|r|x):.*/;
 const RE_HEXADECIMAL = /^[a-f0-9]{1,31}$/;
@@ -50,10 +57,31 @@ const zodAddTransaction = z.object({
     )
     .min(1),
 });
+const zodAddFilterTransaction = z.object({
+  fullDate2: z.number(),
+  transactions: z
+    .array(
+      z.object({
+        code: z.number().min(1),
+        commodityUnit: z.string().min(1),
+        relatedId: z
+          .string()
+          .regex(
+            RE_HEXADECIMAL,
+            "must a length between 1 - 31 and compose of a-f and/or 0-9 characters",
+          ),
+        debitAccount: z.string().regex(RE_IS_ACCOUNT),
+        creditAccountsFilter: z.array(z.string().regex(RE_IS_ACCOUNT)).min(1),
+        amount: z.number(),
+      }),
+    )
+    .min(1),
+});
 
 export default function AddModal() {
+  const mutationAddGlob = useAddTransactionsGlob();
   const mutationAdd = useAddTransactions();
-
+  const [isGlob, setIsGlob] = useState(false);
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [alertErr, setAlertErr] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -85,7 +113,7 @@ export default function AddModal() {
         .toDate()
         .valueOf();
 
-      const transactions: AddTransaction[] = [];
+      const transactions: Array<AddTransaction | AddFilterTransaction> = [];
       let i = 0;
 
       while (true) {
@@ -93,20 +121,45 @@ export default function AddModal() {
 
         if (!debit) break;
 
-        const credit = data["credit" + i]!;
         const amount = data["amount" + i]!;
         const unit = data["unit" + i]!;
         const code = data["code" + i]!;
         const related_id = data["related_id" + i]!;
 
-        transactions.push({
-          code: parseInt(code),
-          commodityUnit: unit,
-          relatedId: related_id,
-          debitAccount: debit,
-          creditAccount: credit,
-          amount: parseInt(amount),
-        });
+        if (isGlob) {
+          const creditAccountsFilter: string[] = [];
+
+          let ii = 0;
+
+          while (true) {
+            const credit = data["credit" + i + "-" + ii]!;
+
+            if (!credit) break;
+
+            creditAccountsFilter.push(credit);
+            ii++;
+          }
+
+          transactions.push({
+            code: parseInt(code),
+            commodityUnit: unit,
+            relatedId: related_id,
+            debitAccount: debit,
+            creditAccountsFilter,
+            amount: parseInt(amount),
+          });
+        } else {
+          const credit = data["credit" + i]!;
+
+          transactions.push({
+            code: parseInt(code),
+            commodityUnit: unit,
+            relatedId: related_id,
+            debitAccount: debit,
+            creditAccount: credit,
+            amount: parseInt(amount),
+          });
+        }
 
         i++;
       }
@@ -119,7 +172,11 @@ export default function AddModal() {
       console.info("add transaction", addTransactionsData);
 
       try {
-        zodAddTransaction.parse(addTransactionsData);
+        if (isGlob) {
+          zodAddFilterTransaction.parse(addTransactionsData);
+        } else {
+          zodAddTransaction.parse(addTransactionsData);
+        }
       } catch (err) {
         const validationError = fromError(err);
 
@@ -129,7 +186,15 @@ export default function AddModal() {
         throw validationError;
       }
       try {
-        await mutationAdd.mutateAsync(addTransactionsData);
+        if (isGlob) {
+          await mutationAddGlob.mutateAsync({
+            filterTransactions:
+              addTransactionsData.transactions as AddFilterTransaction[],
+            fullDate2: addTransactionsData.fullDate2,
+          });
+        } else {
+          await mutationAdd.mutateAsync(addTransactionsData as AddTransactions);
+        }
       } catch (err: any) {
         console.error("Mutation async add transaction error:", err);
         setAlertErr((err || "Unknown error").toString());
@@ -178,6 +243,16 @@ export default function AddModal() {
                   label="Custom date"
                   name="date"
                 />
+                <div>
+                  <Checkbox checked={isGlob} onValueChange={setIsGlob}>
+                    Pool credit accounts from a search list
+                  </Checkbox>
+                  <p className="text-default-500 text-sm mt-0.5">
+                    This will require the sum balance of all found
+                    credit-accounts to have enough to facilitate each
+                    transaction.
+                  </p>
+                </div>
 
                 {postings.map((post, i) => (
                   <Card key={post.key}>
@@ -189,11 +264,15 @@ export default function AddModal() {
                           label="Debit account"
                           name={"debit" + i}
                         />
-                        <AutocompleteAccountNames
-                          className="col-span-3"
-                          label="Credit account"
-                          name={"credit" + i}
-                        />
+                        {isGlob ? (
+                          <AccountNamesGlob name={"credit" + i} />
+                        ) : (
+                          <AutocompleteAccountNames
+                            className="col-span-3"
+                            label="Credit account"
+                            name={"credit" + i}
+                          />
+                        )}
                         <Input
                           className="row-start-1 col-start-4 col-span-2"
                           defaultValue="0"
@@ -295,5 +374,45 @@ function AutocompleteAccountNames(props: {
         <AutocompleteItem key={item.name}>{item.name}</AutocompleteItem>
       )}
     </Autocomplete>
+  );
+}
+
+function AccountNamesGlob(props: { name: string }) {
+  const [list, setList] = useState([
+    {
+      key: crypto.randomUUID(),
+    },
+  ]);
+  const addList = () => setList((s) => [...s, { key: crypto.randomUUID() }]);
+  const removeList = (key: string) =>
+    setList((s) => s.filter((v) => v.key !== key));
+
+  return (
+    <div className="space-y-2 col-span-full">
+      <p className="text-xs text-default-700">
+        Credit account search ordered by first come first served
+      </p>
+      {list.map((item, i) => (
+        <Card key={item.key} className="p-2 flex flex-row gap-2 w-full">
+          <p className="font-mono ms-1">{i + 1}</p>
+          <Textarea
+            className="flex-grow"
+            name={props.name + "-" + i}
+            placeholder="a:b*nk:**"
+          />
+          <Button
+            isIconOnly
+            color="danger"
+            size="sm"
+            onPress={() => removeList(item.key)}
+          >
+            <Trash2Icon size={20} />
+          </Button>
+        </Card>
+      ))}
+      <Button key="add" fullWidth onPress={addList}>
+        Add credit account <PlusIcon />
+      </Button>
+    </div>
   );
 }

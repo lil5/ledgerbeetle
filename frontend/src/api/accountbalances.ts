@@ -1,20 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getAccountBalances } from "@/client";
+import { queryAccountBalances } from "@/client";
 
 export function useAccountBalances(
-  accounts_re: string,
+  accounts_glob: string,
   filterDateIfTrue: null | number = null,
 ) {
   return useQuery({
     initialData: [],
-    queryKey: ["accountbalances", accounts_re, filterDateIfTrue],
+    queryKey: ["accountbalances", accounts_glob, filterDateIfTrue],
     queryFn: async (): Promise<Balances> => {
-      const { data, error } = await getAccountBalances({
-        path: {
-          filter: accounts_re,
-        },
-        query: {
+      const { data, error } = await queryAccountBalances({
+        body: {
+          accounts_glob,
           date: filterDateIfTrue ? filterDateIfTrue : undefined,
         },
       });
