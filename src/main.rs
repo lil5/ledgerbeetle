@@ -26,13 +26,15 @@ extern crate clap;
 
 #[derive(OpenApi)]
 #[openapi(paths(
+    routes::query_account_names_all,
+    routes::mutate_add,
+    routes::query_prepare_add_fcfs,
+    routes::query_account_transactions,
+    routes::query_commodities_all,
+    routes::query_account_balances,
+    routes::query_account_income_statement,
+    routes::get_openapi,
     routes::get_version,
-    routes::put_add,
-    routes::get_transactions,
-    routes::get_commodities,
-    routes::get_account_balances,
-    routes::get_account_names,
-    routes::get_account_income_statement,
 ))]
 struct ApiDoc;
 
@@ -104,27 +106,29 @@ pub async fn router() -> Router {
     };
 
     Router::new()
-        .route("/accountnames", get(routes::get_account_names))
-        .route("/add", put(routes::put_add))
         .route(
-            "/add/prepare",
-            post(routes::get_add_prepare_from_filter_fcfs),
+            "/query/account-names-all",
+            post(routes::query_account_names_all),
         )
-        .route("/test", get(routes::test))
+        .route("/mutate/add", put(routes::mutate_add))
+        .route("/query/prepare-add", post(routes::query_prepare_add_fcfs))
         .route(
-            "/accounttransactions/{filter}",
-            get(routes::get_transactions),
-        )
-        .route(
-            "/accountbalances/{filter}",
-            get(routes::get_account_balances),
+            "/query/account-transactions",
+            post(routes::query_account_transactions),
         )
         .route(
-            "/accountincomestatements/{filter}",
-            post(routes::get_account_income_statement),
+            "/query/commodities-all",
+            post(routes::query_commodities_all),
         )
-        .route("/commodities", get(routes::get_commodities))
-        .route("/version", get(routes::get_version))
+        .route(
+            "/query/account-balances",
+            post(routes::query_account_balances),
+        )
+        .route(
+            "/query/account-income-statements",
+            post(routes::query_account_income_statement),
+        )
         .route("/openapi", get(routes::get_openapi))
+        .route("/version", get(routes::get_version))
         .with_state(app_state)
 }

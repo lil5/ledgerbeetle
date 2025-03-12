@@ -15,8 +15,8 @@ use crate::{models, tb_utils};
 pub type RequestAdd = AddTransactions;
 pub type ResponseAdd = Vec<String>;
 
-pub type RequestAddFilter = AddFilterTransactions;
-pub type ResponseAddFilter = RequestAdd;
+pub type RequestAddPrepareGlob = AddFilterTransactions;
+pub type ResponseAddPrepare = RequestAdd;
 
 pub type ResponseAccountNames = Vec<String>;
 pub type ResponseCommodities = Vec<String>;
@@ -33,9 +33,7 @@ pub struct ResponseIncomeStatements {
 // Types
 // ------------------------------------
 
-pub static RE_DATE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").expect("invalid regex"));
-pub static RE_ACCOUNTS_FIND: LazyLock<Regex> =
+pub static RE_ACCOUNTS_GLOB: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").expect("invalid regex"));
 pub static RE_ACCOUNT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(a|l|e|r|x):([a-z0-9]+:)*([a-z0-9]+)$").expect("invalid regex"));
@@ -135,7 +133,7 @@ fn validate_add_filter_transaction_credit_accounts_filter(
 ) -> Result<(), ValidationError> {
     if credit_accounts_filter
         .iter()
-        .any(|v| !RE_ACCOUNTS_FIND.is_match(v))
+        .any(|v| !RE_ACCOUNTS_GLOB.is_match(v))
     {
         Err(ValidationError::new("invalid account filter"))
     } else {

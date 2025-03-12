@@ -13,7 +13,6 @@ pub static TB_MAX_BATCH_SIZE: u32 = 8190;
 #[diesel(table_name = crate::schema::accounts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Account {
-    pub id: i64,
     pub name: String,
     pub tb_id: String,
     pub commodities_id: i32,

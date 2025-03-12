@@ -9,251 +9,12 @@
     "version": "0.2.0"
   },
   "paths": {
-    "/accountbalances/{filter}": {
-      "get": {
-        "tags": [
-          "routes"
-        ],
-        "operationId": "get_account_balances",
-        "parameters": [
-          {
-            "name": "date",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "minimum": 0
-            }
-          },
-          {
-            "name": "filter",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns list of account balances by filter",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Balance"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/accountincomestatements/{filter}": {
-      "post": {
-        "tags": [
-          "routes"
-        ],
-        "operationId": "get_account_income_statement",
-        "parameters": [
-          {
-            "name": "filter",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GetAccountIncomeStatementBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Returns list of balances by filter by date",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResponseIncomeStatements"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/accountnames": {
-      "get": {
-        "tags": [
-          "routes"
-        ],
-        "operationId": "get_account_names",
-        "responses": {
-          "200": {
-            "description": "Returns list of transaction ids",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/accounttransactions/{filter}": {
-      "get": {
-        "tags": [
-          "routes"
-        ],
-        "operationId": "get_transactions",
-        "parameters": [
-          {
-            "name": "date_newest",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "date_oldest",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 0
-            }
-          },
-          {
-            "name": "filter",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Returns list of transactions by filter",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Transaction"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error occurred",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/add": {
+    "/mutate/add": {
       "put": {
         "tags": [
           "routes"
         ],
-        "operationId": "put_add",
+        "operationId": "mutate_add",
         "requestBody": {
           "content": {
             "application/json": {
@@ -298,12 +59,241 @@
         }
       }
     },
-    "/commodities": {
+    "/openapi": {
       "get": {
         "tags": [
           "routes"
         ],
-        "operationId": "get_commodities",
+        "operationId": "get_openapi",
+        "responses": {
+          "200": {
+            "description": "Returns openapi v3.1 as json",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/account-balances": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "query_account_balances",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryAccountBalancesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns list of account balances by filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Balance"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/account-income-statements": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "query_account_income_statement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryAccountIncomeStatementBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns list of balances by filter by date",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseIncomeStatements"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/account-names-all": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "query_account_names_all",
+        "responses": {
+          "200": {
+            "description": "Returns list of transaction ids",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/account-transactions": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "query_account_transactions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryTransactionsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns list of transactions by filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Transaction"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/commodities-all": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "query_commodities_all",
         "responses": {
           "200": {
             "description": "Returns list of commodities",
@@ -314,6 +304,56 @@
                   "items": {
                     "type": "string"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query/prepare-add": {
+      "post": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "query_prepare_add_fcfs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddFilterTransactions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns a prepared add payload to be run with the route PUT /app",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddTransactions"
                 }
               }
             }
@@ -364,6 +404,69 @@
   },
   "components": {
     "schemas": {
+      "AddFilterTransaction": {
+        "type": "object",
+        "required": [
+          "commodityUnit",
+          "code",
+          "relatedId",
+          "debitAccount",
+          "creditAccountsFilter",
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "amount added to debit account"
+          },
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "transaction code"
+          },
+          "commodityUnit": {
+            "type": "string",
+            "description": "commodity used"
+          },
+          "creditAccountsFilter": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "account name"
+          },
+          "debitAccount": {
+            "type": "string",
+            "description": "account name"
+          },
+          "relatedId": {
+            "type": "string",
+            "description": "random hex u128 string"
+          }
+        }
+      },
+      "AddFilterTransactions": {
+        "type": "object",
+        "required": [
+          "fullDate2",
+          "filterTransactions"
+        ],
+        "properties": {
+          "filterTransactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddFilterTransaction"
+            },
+            "description": "list of transactions"
+          },
+          "fullDate2": {
+            "type": "integer",
+            "format": "int64",
+            "description": "unix time milliseconds"
+          }
+        }
+      },
       "AddTransaction": {
         "type": "object",
         "required": [
@@ -449,21 +552,6 @@
           }
         }
       },
-      "GetAccountIncomeStatementBody": {
-        "type": "object",
-        "required": [
-          "dates"
-        ],
-        "properties": {
-          "dates": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        }
-      },
       "IncomeStatement": {
         "type": "object",
         "required": [
@@ -489,6 +577,64 @@
           },
           "commodityUnit": {
             "type": "string"
+          }
+        }
+      },
+      "QueryAccountBalancesBody": {
+        "type": "object",
+        "required": [
+          "accounts_glob"
+        ],
+        "properties": {
+          "accounts_glob": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "QueryAccountIncomeStatementBody": {
+        "type": "object",
+        "required": [
+          "dates",
+          "accounts_glob"
+        ],
+        "properties": {
+          "accounts_glob": {
+            "type": "string"
+          },
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "QueryTransactionsBody": {
+        "type": "object",
+        "required": [
+          "date_newest",
+          "date_oldest",
+          "accounts_glob"
+        ],
+        "properties": {
+          "accounts_glob": {
+            "type": "string"
+          },
+          "date_newest": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "date_oldest": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
