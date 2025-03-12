@@ -29,7 +29,6 @@ import { useAddTransactions, useAddTransactionsGlob } from "@/api/add";
 import { useAccountNames } from "@/api/accountnames";
 import {
   AddFilterTransaction,
-  AddFilterTransactions,
   AddTransaction,
   AddTransactions,
 } from "@/client";
