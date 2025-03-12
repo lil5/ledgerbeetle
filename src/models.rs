@@ -61,7 +61,7 @@ pub async fn find_or_create_account(
             if err != NotFound {
                 Err(http_err::internal_error(err))
             } else {
-                println!("account {} not found creating...", account_name_clone);
+                // println!("account {} not found creating...", account_name_clone);
                 create_account(conn, tb, account_name_clone, unit.clone()).await
             }
         }
@@ -86,7 +86,7 @@ async fn create_account(
     let account_name_clone = account_name.clone();
     let account_type = AccountType::read(account_name.as_str()).map_err(http_err::bad_error)?;
     let id = tb::id();
-    println!("creating account_name: {}", account_name);
+    // println!("creating account_name: {}", account_name);
     let account = conn
         .interact(move |conn| {
             let new_account = NewAccount {

@@ -45,7 +45,7 @@ mod tests {
             amount: 1,
         }];
 
-        println!("send add transaction");
+        // println!("send add transaction");
         let response = server
             .put("/add")
             .json(&responses::AddTransactions {
@@ -96,7 +96,7 @@ mod tests {
                 })
                 .collect();
 
-            println!("send add transaction");
+            // println!("send add transaction");
             let response = server
                 .put("/add")
                 .json(&responses::AddTransactions {

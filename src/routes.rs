@@ -325,20 +325,20 @@ pub async fn get_transactions(
     }
 
     let accounts: Vec<Account> = find_accounts_re(&conn, filter).await?;
-    println!(
-        "accounts found: {}",
-        accounts.iter().map(|a| a.id).join(", ")
-    );
+    // println!(
+    //     "accounts found: {}",
+    //     accounts.iter().map(|a| a.id).join(", ")
+    // );
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
         .iter()
         .map(|c| (c.tb_ledger as u32, c))
         .collect::<HashMap<_, _>>();
 
-    println!(
-        "commodities found: '{}'",
-        commodities.iter().map(|a| a.0).join(", ")
-    );
+    // println!(
+    //     "commodities found: '{}'",
+    //     commodities.iter().map(|a| a.0).join(", ")
+    // );
 
     // collect all transfers in a hashmap
     let mut transfers: HashMap<u128, tb::Transfer> = HashMap::new();
@@ -349,7 +349,7 @@ pub async fn get_transactions(
         let flags = tb::core::account::FilterFlags::DEBITS
             | tb::core::account::FilterFlags::CREDITS
             | tb::core::account::FilterFlags::REVERSED;
-        println!("getting account {account_tb_id} transfers");
+        // println!("getting account {account_tb_id} transfers");
 
         // loops around and collects more than the TB_MAX_BATCH_SIZE if possible
         let mut is_response_larger_than_tb_max_batch_size = true;
@@ -371,7 +371,7 @@ pub async fn get_transactions(
                 .get_account_transfers(Box::new(filter))
                 .await
                 .map_err(http_err::internal_error)?;
-            println!("found transfer data len {}", transfers_data.len());
+            // println!("found transfer data len {}", transfers_data.len());
 
             is_response_larger_than_tb_max_batch_size =
                 transfers_data.len() > (TB_MAX_BATCH_SIZE as usize) - 1;
@@ -426,7 +426,7 @@ pub async fn get_transactions(
         })
         .collect::<HttpResult<responses::ResponseTransactions>>()?;
 
-    println!("transactions len {}", transactions.len());
+    // println!("transactions len {}", transactions.len());
 
     Ok(Json(transactions))
 }
@@ -469,10 +469,10 @@ pub async fn get_account_balances(
     }
 
     let accounts: Vec<Account> = find_accounts_re(&conn, filter).await?;
-    println!(
-        "accounts found: {}",
-        accounts.iter().map(|a| a.id).join(", ")
-    );
+    // println!(
+    //     "accounts found: {}",
+    //     accounts.iter().map(|a| a.id).join(", ")
+    // );
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
         .iter()
@@ -597,10 +597,10 @@ pub async fn get_account_income_statement(
     }
 
     let accounts: Vec<Account> = find_accounts_re(&conn, filter).await?;
-    println!(
-        "accounts found: {}",
-        accounts.iter().map(|a| a.id).join(", ")
-    );
+    // println!(
+    //     "accounts found: {}",
+    //     accounts.iter().map(|a| a.id).join(", ")
+    // );
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
         .iter()
