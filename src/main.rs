@@ -106,6 +106,10 @@ pub async fn router() -> Router {
     Router::new()
         .route("/accountnames", get(routes::get_account_names))
         .route("/add", put(routes::put_add))
+        .route(
+            "/add/prepare",
+            post(routes::get_add_prepare_from_filter_fcfs),
+        )
         .route("/test", get(routes::test))
         .route(
             "/accounttransactions/{filter}",

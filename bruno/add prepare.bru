@@ -1,0 +1,33 @@
+meta {
+  name: add prepare
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base}}/add/prepare
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "fullDate2": {{fullDate2}},
+    "filterTransactions": [
+      {
+        "code": 100,
+        "commodityUnit": "TEST",
+        "relatedId": "{{relatedId}}",
+        "debitAccount": "l:test:credit",
+        "creditAccountsFilter": ["l:test:1741348061058:debit", "l:test:**:debit"],
+        "amount": 70000
+      }
+    ]
+  }
+}
+
+script:pre-request {
+  const id = ()=>(new Date().valueOf()).toString(16)
+  bru.setEnvVar("relatedId",id());
+  bru.setEnvVar("fullDate2",new Date().valueOf());
+}

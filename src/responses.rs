@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 use anyhow::anyhow;
 use regex::Regex;
 use serde::*;
-use validator::Validate;
+use validator::{Validate, ValidationError};
 
 use crate::{models, tb_utils};
 
@@ -14,6 +14,9 @@ use crate::{models, tb_utils};
 // ------------------------------------
 pub type RequestAdd = AddTransactions;
 pub type ResponseAdd = Vec<String>;
+
+pub type RequestAddFilter = AddFilterTransactions;
+pub type ResponseAddFilter = RequestAdd;
 
 pub type ResponseAccountNames = Vec<String>;
 pub type ResponseCommodities = Vec<String>;
@@ -34,10 +37,8 @@ pub static RE_DATE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\d{4}-\d\d-\d\d$").expect("invalid regex"));
 pub static RE_ACCOUNTS_FIND: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").expect("invalid regex"));
-pub static RE_ACCOUNT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(a|l|e|r|x):([a-z0-9]+:)*([a-z0-9]+)$")
-        .expect("invalid regex")
-});
+pub static RE_ACCOUNT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(a|l|e|r|x):([a-z0-9]+:)*([a-z0-9]+)$").expect("invalid regex"));
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -94,6 +95,52 @@ pub struct AddTransaction {
     /// amount added to debit account
     #[validate(range(min = 1))]
     pub amount: i64,
+}
+
+#[derive(Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddFilterTransactions {
+    /// unix time milliseconds
+    pub full_date2: i64,
+    /// list of transactions
+    #[validate(length(min = 1))]
+    pub filter_transactions: Vec<AddFilterTransaction>,
+}
+
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AddFilterTransaction {
+    /// commodity used
+    pub commodity_unit: String,
+    /// transaction code
+    pub code: i32,
+    /// random hex u128 string
+    pub related_id: String,
+    /// account name
+    #[validate(regex(path=*RE_ACCOUNT))]
+    pub debit_account: String,
+    /// account name
+    #[validate(custom(
+        function = "validate_add_filter_transaction_credit_accounts_filter",
+        message = "invalid credit account filter"
+    ))]
+    pub credit_accounts_filter: Vec<String>,
+    /// amount added to debit account
+    #[validate(range(min = 1))]
+    pub amount: i64,
+}
+
+fn validate_add_filter_transaction_credit_accounts_filter(
+    credit_accounts_filter: &Vec<String>,
+) -> Result<(), ValidationError> {
+    if credit_accounts_filter
+        .iter()
+        .any(|v| !RE_ACCOUNTS_FIND.is_match(v))
+    {
+        Err(ValidationError::new("invalid account filter"))
+    } else {
+        Ok(())
+    }
 }
 
 impl Transaction {

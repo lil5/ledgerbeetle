@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use axum::body::Body;
 use axum::extract::{Path, Query};
 use axum::http::StatusCode;
@@ -158,6 +159,139 @@ pub async fn put_add(
         })?;
 
     Ok(Json(transfer_ids))
+}
+
+pub async fn get_add_prepare_from_filter_fcfs(
+    State(state): State<AppState>,
+    Json(payload): Json<responses::RequestAddFilter>,
+) -> http_err::HttpResult<Json<responses::ResponseAddFilter>> {
+    if !state.allow_add {
+        return Err(http_err::bad_error(std::io::Error::other(
+            "writing to ledger is disabled",
+        )));
+    }
+
+    payload.validate().map_err(http_err::bad_error)?;
+
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
+
+    let mut add_transactions: Vec<responses::AddTransaction> = Vec::new();
+    // map of key: account_tb_id value: balance
+    let mut tb_account_balances: HashMap<String, i64> = HashMap::new();
+    for t in payload.filter_transactions.iter() {
+        let mut remaining_amount = t.amount;
+        'loop_credit_accounts_filter_item: for credit_accounts_filter_item in
+            t.credit_accounts_filter.iter()
+        {
+            let credit_accounts = models::find_accounts_re_by_commodity(
+                &conn,
+                credit_accounts_filter_item.clone(),
+                t.commodity_unit.clone(),
+            )
+            .await?;
+
+            // println!("credit accounts {}", credit_accounts.len());
+
+            // get account balances where not already retrieved
+            let missing_tb_account_ids: Vec<u128> = credit_accounts
+                .iter()
+                .map(|a| &a.tb_id)
+                .filter(|a| !tb_account_balances.contains_key(*a))
+                .map(|s| tb_utils::u128::from_hex_string(s.as_str()))
+                .collect();
+            let tb_accounts: Vec<tb::core::account::Account> = state
+                .tb
+                .read()
+                .await
+                .lookup_accounts(missing_tb_account_ids)
+                .await
+                .map_err(http_err::internal_error)?;
+            for a in tb_accounts.iter() {
+                tb_account_balances.insert(
+                    tb_utils::u128::to_hex_string(a.id()),
+                    a.debits_posted() as i64 - a.credits_posted() as i64,
+                );
+            }
+
+            // remove from account balance and until remaining amount is zero & add a transaction
+            for account in credit_accounts.iter() {
+                if let Some(tb_account_balance) = tb_account_balances.get_mut(&account.tb_id) {
+                    if *tb_account_balance > 0 {
+                        let add_transaction_amount = if remaining_amount < *tb_account_balance {
+                            *tb_account_balance -= remaining_amount.clone();
+                            let old_remaining_amount = remaining_amount.clone();
+                            remaining_amount = 0;
+                            old_remaining_amount
+                        } else {
+                            let old_tb_account_balance = tb_account_balance.clone();
+                            remaining_amount -= old_tb_account_balance;
+                            *tb_account_balance = 0;
+                            old_tb_account_balance
+                        };
+                        add_transactions.push(responses::AddTransaction {
+                            commodity_unit: t.commodity_unit.clone(),
+                            code: t.code,
+                            related_id: t.related_id.clone(),
+                            debit_account: t.debit_account.clone(),
+                            credit_account: account.name.clone(),
+                            amount: add_transaction_amount,
+                        });
+                    }
+                }
+                if remaining_amount <= 0 {
+                    break 'loop_credit_accounts_filter_item;
+                }
+            }
+        }
+        if remaining_amount > 0 {
+            return Err(http_err::bad_error(anyhow!(
+                "not enough inside credit accounts to build a transaction"
+            )));
+        }
+    }
+
+    fn assert_total_value(
+        payload: Vec<responses::AddFilterTransaction>,
+        add_transactions: Vec<responses::AddTransaction>,
+    ) -> bool {
+        let find_sum_amount_by_unit = add_transactions
+            .iter()
+            .chunk_by(|t| t.commodity_unit.clone())
+            .into_iter()
+            .map(|g| {
+                (
+                    g.0,
+                    g.1.map(|t| t.amount).reduce(|acc, e| acc + e).unwrap_or(0),
+                )
+            })
+            .collect::<HashMap<String, i64>>();
+        for (unit, sum_amount) in find_sum_amount_by_unit.iter() {
+            let payload_by_unit_sum_amount = payload
+                .iter()
+                .filter(|v| v.commodity_unit == *unit)
+                .map(|v| v.amount)
+                .reduce(|acc, v| acc + v)
+                .unwrap_or(0);
+
+            if *sum_amount != payload_by_unit_sum_amount {
+                println!(
+                    "for commodity {} payload sum amount {} is not the same as result amount {}",
+                    unit, payload_by_unit_sum_amount, sum_amount
+                );
+                return false;
+            }
+        }
+        true
+    }
+    assert!(assert_total_value(
+        payload.filter_transactions.clone(),
+        add_transactions.clone()
+    ));
+
+    Ok(Json(responses::AddTransactions {
+        full_date2: payload.full_date2,
+        transactions: add_transactions,
+    }))
 }
 
 #[derive(Deserialize, Validate)]

@@ -158,6 +158,38 @@ pub async fn find_accounts_re(
     .map_err(http_err::internal_error)?
 }
 
+pub async fn find_accounts_re_by_commodity(
+    conn: &Object,
+    filter: String,
+    commodity_unit: String,
+) -> Result<Vec<Account>, http_err::HttpErr> {
+    use crate::schema::accounts::dsl::*;
+    use crate::schema::commodities::dsl::{id as commodities_table_id, *};
+
+    conn.interact(move |conn| {
+        let filter = filter.replace("**", "%").replace("*", "_");
+        let mut q = accounts
+            .inner_join(
+                commodities.on(commodities_table_id
+                    .eq(commodities_id)
+                    .and(unit.eq(commodity_unit))),
+            )
+            .into_boxed();
+        for (i, f) in filter.split("|").enumerate() {
+            if i == 0 {
+                q = q.filter(name.like(f));
+            } else {
+                q = q.or_filter(name.like(f));
+            }
+        }
+        let q = q.select(Account::as_select()).order((name, commodities_id));
+        q.get_results::<Account>(conn)
+            .map_err(http_err::internal_error)
+    })
+    .await
+    .map_err(http_err::internal_error)?
+}
+
 pub async fn find_accounts_by_tb_ids(
     conn: &Object,
     tb_ids: Vec<String>,
