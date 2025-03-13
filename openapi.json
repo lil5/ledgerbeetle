@@ -59,6 +59,49 @@
         }
       }
     },
+    "/mutate/migrate": {
+      "put": {
+        "tags": [
+          "routes"
+        ],
+        "operationId": "mutate_migrate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestMigrate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Returns status 200 when migration is complete"
+          },
+          "400": {
+            "description": "Bad request error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error occurred",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/openapi": {
       "get": {
         "tags": [
@@ -580,6 +623,52 @@
           }
         }
       },
+      "MigrateAccount": {
+        "type": "object",
+        "required": [
+          "t",
+          "n",
+          "c"
+        ],
+        "properties": {
+          "c": {
+            "type": "integer",
+            "format": "int64",
+            "description": "tigerbeetle ledger id"
+          },
+          "n": {
+            "type": "string",
+            "description": "account name"
+          },
+          "t": {
+            "type": "string"
+          }
+        }
+      },
+      "MigrateCommodity": {
+        "type": "object",
+        "required": [
+          "tbLedger",
+          "unit",
+          "decimalPlace"
+        ],
+        "properties": {
+          "decimalPlace": {
+            "type": "integer",
+            "format": "int32",
+            "description": "location of decimal point"
+          },
+          "tbLedger": {
+            "type": "integer",
+            "format": "int32",
+            "description": "tigerbeetle ledger number"
+          },
+          "unit": {
+            "type": "string",
+            "description": "commodity unit used"
+          }
+        }
+      },
       "QueryAccountBalancesBody": {
         "type": "object",
         "required": [
@@ -635,6 +724,27 @@
           "date_oldest": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "RequestMigrate": {
+        "type": "object",
+        "required": [
+          "commodities",
+          "accounts"
+        ],
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrateAccount"
+            }
+          },
+          "commodities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrateCommodity"
+            }
           }
         }
       },
