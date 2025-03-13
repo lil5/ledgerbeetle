@@ -50,6 +50,7 @@ pub struct AppState {
     pub pool: Pool,
     pub tb: Arc<RwLock<tb::Client>>,
     pub allow_add: bool,
+    pub allow_migrate: bool,
 }
 
 #[tokio::main]
@@ -76,6 +77,11 @@ pub async fn router() -> Router {
     let tb_address = std::env::var("TB_ADDRESS").expect("TB_ADDRESS must be set");
     let allow_add =
         RE_ENV_TRUE.is_match(&std::env::var("ALLOW_ADD").expect("ALLOW_ADD must be set"));
+    let allow_migrate =
+        RE_ENV_TRUE.is_match(&std::env::var("ALLOW_MIGRATE").expect("ALLOW_MIGRATE must be set"));
+    if !allow_add && allow_migrate {
+        panic!("ALLOW_ADD must be true if ALLOW_MIGRATE is true");
+    }
 
     // setup connection pool
     let manager =
@@ -104,6 +110,7 @@ pub async fn router() -> Router {
         pool,
         tb,
         allow_add,
+        allow_migrate,
     };
 
     Router::new()

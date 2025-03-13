@@ -93,9 +93,9 @@ pub async fn mutate_add(
     State(state): State<AppState>,
     Json(body): Json<responses::RequestAdd>,
 ) -> http_err::HttpResult<Json<responses::ResponseAdd>> {
-    if !state.allow_add {
+    if !state.allow_migrate {
         return Err(http_err::bad_error(std::io::Error::other(
-            "writing to ledger is disabled",
+            "migrating to ledger is disabled",
         )));
     }
 

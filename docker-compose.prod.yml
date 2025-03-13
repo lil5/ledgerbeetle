@@ -32,6 +32,7 @@ services:
       - TB_CLIENT_ID=0
       - TB_ADDRESS=10.7.0.5:3001
       - ALLOW_ADD=true
+      - ALLOW_MIGRATE=true
     ports:
       - 127.0.0.1:8080:8080
     networks:
