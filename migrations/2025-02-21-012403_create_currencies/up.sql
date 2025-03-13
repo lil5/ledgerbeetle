@@ -13,4 +13,4 @@ ALTER TABLE accounts
 ADD CONSTRAINT fk_commodities FOREIGN KEY (commodities_id) REFERENCES commodities (id);
 
 ALTER TABLE accounts
-ADD CONSTRAINT uk_accounts_name_commodities UNIQUE (name, commodities_id);
+ADD CONSTRAINT uk_accounts_name_commodities UNIQUE ("name", commodities_id);
