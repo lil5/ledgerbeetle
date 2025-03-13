@@ -1,3 +1,5 @@
+use diesel::prelude::Insertable;
+use diesel::Selectable;
 use std::collections::HashMap;
 use std::time::UNIX_EPOCH;
 use std::{ops::Neg, sync::LazyLock};
@@ -12,6 +14,15 @@ use crate::{models, tb_utils};
 
 // Requests and Responses
 // ------------------------------------
+#[derive(Serialize, Deserialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestMigrate {
+    #[validate(length(min = 1))]
+    pub commodities: Vec<MigrateCommodity>,
+    #[validate(length(min = 1))]
+    pub accounts: Vec<MigrateAccount>,
+}
+
 pub type RequestAdd = AddTransactions;
 pub type ResponseAdd = Vec<String>;
 
@@ -37,6 +48,41 @@ pub static RE_ACCOUNTS_GLOB: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z0-9\*\.\|:]+$").expect("invalid regex"));
 pub static RE_ACCOUNT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(a|l|e|r|x):([a-z0-9]+:)*([a-z0-9]+)$").expect("invalid regex"));
+
+#[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct MigrateAccount {
+    // tigerbeetle account id in hexadecimal
+    pub t: String,
+    /// account name
+    pub n: String,
+    /// tigerbeetle ledger id
+    pub c: i64,
+}
+
+#[derive(
+    Default,
+    Debug,
+    Validate,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    ToSchema,
+    Selectable,
+    Insertable,
+)]
+#[diesel(table_name = crate::schema::commodities)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[serde(rename_all = "camelCase")]
+pub struct MigrateCommodity {
+    /// tigerbeetle ledger number
+    pub tb_ledger: i32,
+    /// commodity unit used
+    pub unit: String,
+    /// location of decimal point
+    pub decimal_place: i32,
+}
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]

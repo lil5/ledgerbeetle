@@ -9,7 +9,70 @@ use validator::ValidationError;
 
 pub static TB_MAX_BATCH_SIZE: u32 = 8190;
 
-#[derive(Queryable, Selectable)]
+// #[derive(Queryable, Selectable)]
+// #[diesel(table_name = crate::schema::commodities)]
+// #[diesel(check_for_backend(diesel::pg::Pg))]
+// pub struct CommoditiesInsertItem {
+//     pub name: String,
+//     pub tb_id: String,
+//     pub commodities_id: i32,
+// }
+
+#[derive(Selectable, Queryable)]
+#[diesel(table_name = crate::schema::commodities)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CommodityInsertResponse {
+    pub id: i32,
+    pub tb_ledger: i32,
+}
+
+pub async fn insert_commodities(
+    conn: &Object,
+    new_commodities: Vec<responses::MigrateCommodity>,
+) -> http_err::HttpResult<Vec<CommodityInsertResponse>> {
+    use crate::schema::commodities::dsl::*;
+    let tb_ledger_filter: Vec<i32> = new_commodities.iter().map(|c| c.tb_ledger).collect();
+
+    conn.interact(move |conn| {
+        diesel::insert_into(commodities)
+            .values(&new_commodities)
+            .on_conflict_do_nothing()
+            .execute(conn)
+            .map_err(http_err::internal_error)
+    })
+    .await
+    .map_err(http_err::internal_error)??;
+
+    conn.interact(move |conn| {
+        commodities
+            .select(CommodityInsertResponse::as_select())
+            .filter(tb_ledger.eq_any(tb_ledger_filter))
+            .get_results::<CommodityInsertResponse>(conn)
+            .map_err(http_err::internal_error)
+    })
+    .await
+    .map_err(http_err::internal_error)?
+}
+
+pub async fn insert_accounts(
+    conn: &Object,
+    new_accounts: Vec<Account>,
+) -> http_err::HttpResult<()> {
+    use crate::schema::accounts::dsl::*;
+
+    conn.interact(move |conn| {
+        diesel::insert_into(accounts)
+            .values(&new_accounts)
+            .execute(conn)
+            .map_err(http_err::internal_error)
+    })
+    .await
+    .map_err(http_err::internal_error)??;
+
+    Ok(())
+}
+
+#[derive(Queryable, Selectable, Insertable, Clone)]
 #[diesel(table_name = crate::schema::accounts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Account {

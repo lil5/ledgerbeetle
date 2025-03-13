@@ -1,0 +1,33 @@
+meta {
+  name: migrate
+  type: http
+  seq: 12
+}
+
+put {
+  url: {{base}}/mutate/migrate
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "commodities": [{
+      "tbLedger": 1,
+      "unit": "EUR",
+      "decimalPlace": 100
+    }],
+    "accounts": [{
+      "t": "3148095",
+      "n": "a:bank:new",
+      "c": 1
+    }]
+  }
+}
+
+script:pre-request {
+  const id = ()=>(new Date().valueOf()).toString(16)
+  bru.setEnvVar("relatedId",id());
+  bru.setEnvVar("transferId",id());
+  bru.setEnvVar("fullDate2",new Date().valueOf());
+}

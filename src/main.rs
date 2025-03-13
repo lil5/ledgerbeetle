@@ -26,6 +26,7 @@ extern crate clap;
 
 #[derive(OpenApi)]
 #[openapi(paths(
+    routes::mutate_migrate,
     routes::query_account_names_all,
     routes::mutate_add,
     routes::query_prepare_add_fcfs,
@@ -106,6 +107,7 @@ pub async fn router() -> Router {
     };
 
     Router::new()
+        .route("/mutate/migrate", put(routes::mutate_migrate))
         .route(
             "/query/account-names-all",
             post(routes::query_account_names_all),

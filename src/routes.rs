@@ -22,6 +22,52 @@ use crate::responses::RE_ACCOUNTS_GLOB;
 use crate::tb_utils::u128::{from_hex_string, to_hex_string};
 use crate::{http_err, models, responses, tb_utils, ApiDoc, AppState};
 
+// #[debug_handler]
+#[utoipa::path(put, path = "/mutate/migrate", responses(
+    (status = 200, description = "Returns status 200 when migration is complete"),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
+pub async fn mutate_migrate(
+    State(state): State<AppState>,
+    Json(body): Json<responses::RequestMigrate>,
+) -> http_err::HttpResult<Json<()>> {
+    if !state.allow_add {
+        return Err(http_err::bad_error(std::io::Error::other(
+            "writing to ledger is disabled",
+        )));
+    }
+
+    body.validate().map_err(http_err::bad_error)?;
+
+    let conn = state.pool.get().await.map_err(http_err::internal_error)?;
+    let commodity_insert_res = models::insert_commodities(&conn, body.commodities).await?;
+
+    let new_accounts: http_err::HttpResult<Vec<Account>> = body
+        .accounts
+        .iter()
+        .map(|a| -> http_err::HttpResult<Account> {
+            let find_commodity = commodity_insert_res
+                .iter()
+                .find(|c| c.tb_ledger == a.c as i32)
+                .ok_or(http_err::internal_error(anyhow!(
+                    "commodity id listed in account that is not availible in commodities listing"
+                )))?;
+
+            Ok(Account {
+                name: a.n.clone(),
+                tb_id: a.t.clone(),
+                commodities_id: find_commodity.id,
+            })
+        })
+        .collect();
+    let new_accounts = new_accounts?;
+
+    models::insert_accounts(&conn, new_accounts).await?;
+
+    Ok(Json(()))
+}
+
 #[utoipa::path(post, path = "/query/account-names-all", responses(
     (status = 200, description = "Returns list of transaction ids", body = responses::Vec<String>),
     (status = 400, description = "Bad request error occurred", body = String),
