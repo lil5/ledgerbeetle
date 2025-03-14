@@ -10,6 +10,7 @@ export function useAccountBalances(
     initialData: [],
     queryKey: ["accountbalances", accounts_glob, filterDateIfTrue],
     queryFn: async (): Promise<Balances> => {
+      if (accounts_glob == "") return [];
       const { data, error } = await queryAccountBalances({
         body: {
           accounts_glob,

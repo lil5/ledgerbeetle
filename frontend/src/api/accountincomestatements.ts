@@ -13,6 +13,7 @@ export function useAccountIncomeStatements(
     },
     queryKey: ["accountincomestatements", accounts_glob, dates.join(",")],
     queryFn: async () => {
+      if (accounts_glob == "") return { dates: [], incomeStatements: [] };
       const { data, error } = await queryAccountIncomeStatement({
         body: { dates, accounts_glob },
       });

@@ -11,6 +11,7 @@ export function useAccountTransactions(
     initialData: [],
     queryKey: ["accounttransactions", accounts_glob, date_newest, date_oldest],
     queryFn: async (): Promise<Transaction[]> => {
+      if (accounts_glob == "") return [];
       const { data, error } = await queryAccountTransactions({
         body: { date_newest, date_oldest, accounts_glob },
       });
