@@ -13,15 +13,24 @@ put {
 body:json {
   {
     "commodities": [{
-      "tbLedger": 1,
+      "tbLedger": 4,
+      "unit": "USD",
+      "decimalPlace": 100
+    }, {
+      "tbLedger": 5,
       "unit": "EUR",
       "decimalPlace": 100
     }],
     "accounts": [{
-      "t": "3148095",
+      "t": "31480f95",
       "n": "a:bank:new",
-      "c": 1
-    }]
+      "c": 4
+    },{
+      "t": "3148ef95",
+      "n": "a:bank:other",
+      "c": 5
+    }
+                ]
   }
 }
 
