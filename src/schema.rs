@@ -13,7 +13,6 @@ diesel::table! {
 diesel::table! {
     commodities (id) {
         id -> Int4,
-        tb_ledger -> Int4,
         unit -> Text,
         decimal_place -> Int4,
     }

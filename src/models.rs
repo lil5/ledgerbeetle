@@ -23,7 +23,6 @@ pub static TB_MAX_BATCH_SIZE: u32 = 8190;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct CommodityInsertResponse {
     pub id: i32,
-    pub tb_ledger: i32,
 }
 
 pub async fn insert_commodities(
@@ -31,7 +30,7 @@ pub async fn insert_commodities(
     new_commodities: Vec<responses::MigrateCommodity>,
 ) -> http_err::HttpResult<Vec<CommodityInsertResponse>> {
     use crate::schema::commodities::dsl::*;
-    let tb_ledger_filter: Vec<i32> = new_commodities.iter().map(|c| c.tb_ledger).collect();
+    let commodities_id_filter: Vec<i32> = new_commodities.iter().map(|c| c.id).collect();
 
     conn.interact(move |conn| {
         diesel::insert_into(commodities)
@@ -46,7 +45,7 @@ pub async fn insert_commodities(
     conn.interact(move |conn| {
         commodities
             .select(CommodityInsertResponse::as_select())
-            .filter(tb_ledger.eq_any(tb_ledger_filter))
+            .filter(id.eq_any(commodities_id_filter))
             .get_results::<CommodityInsertResponse>(conn)
             .map_err(http_err::internal_error)
     })
@@ -180,7 +179,7 @@ async fn create_account(
     let new_tb_account = tb::Account::new(
         id,
         commodity
-            .tb_ledger
+            .id
             .try_into()
             .expect("tb_ledger should be able to become unsigned"),
         1,
@@ -274,7 +273,6 @@ pub async fn find_accounts_by_tb_ids(
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Commodities {
     pub id: i32,
-    pub tb_ledger: i32,
     pub unit: String,
     pub decimal_place: i32,
 }

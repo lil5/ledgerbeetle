@@ -52,7 +52,7 @@ pub static RE_ACCOUNT: LazyLock<Regex> =
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MigrateAccount {
-    // tigerbeetle account id in hexadecimal
+    /// tigerbeetle account id in hexadecimal
     pub t: String,
     /// account name
     pub n: String,
@@ -77,7 +77,7 @@ pub struct MigrateAccount {
 #[serde(rename_all = "camelCase")]
 pub struct MigrateCommodity {
     /// tigerbeetle ledger number
-    pub tb_ledger: i32,
+    pub id: i32,
     /// commodity unit used
     pub unit: String,
     /// location of decimal point

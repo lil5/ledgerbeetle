@@ -12,25 +12,30 @@ put {
 
 body:json {
   {
-    "commodities": [{
-      "tbLedger": 4,
-      "unit": "USD",
-      "decimalPlace": 100
-    }, {
-      "tbLedger": 5,
-      "unit": "EUR",
-      "decimalPlace": 100
-    }],
-    "accounts": [{
-      "t": "31480f95",
-      "n": "a:bank:new",
-      "c": 4
-    },{
-      "t": "3148ef95",
-      "n": "a:bank:other",
-      "c": 5
-    }
-                ]
+    "commodities": [
+      {
+        "id": 4,
+        "unit": "USD",
+        "decimalPlace": 2
+      },
+      {
+        "id": 5,
+        "unit": "EUR",
+        "decimalPlace": 2
+      }
+    ],
+    "accounts": [
+      {
+        "t": "31480f95",
+        "n": "a:bank:new",
+        "c": 4
+      },
+      {
+        "t": "3148ef95",
+        "n": "a:bank:other",
+        "c": 5
+      }
+    ]
   }
 }
 

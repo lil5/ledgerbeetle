@@ -49,7 +49,7 @@ pub async fn mutate_migrate(
         .map(|a| -> http_err::HttpResult<Account> {
             let find_commodity = commodity_insert_res
                 .iter()
-                .find(|c| c.tb_ledger == a.c as i32)
+                .find(|c| c.id == a.c as i32)
                 .ok_or(http_err::internal_error(anyhow!(
                     "commodity id listed in account that is not availible in commodities listing"
                 )))?;
@@ -135,7 +135,7 @@ pub async fn mutate_add(
             .with_credit_account_id(from_hex_string(account_credit.tb_id.as_str()))
             .with_user_data_128(user_data_128)
             .with_user_data_64(user_data_64)
-            .with_ledger(commodity.tb_ledger as u32);
+            .with_ledger(commodity.id as u32);
 
         // forces all transfers to be a linked
         // see: https://docs.tigerbeetle.com/coding/linked-events/
@@ -328,7 +328,7 @@ pub async fn query_account_transactions(
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
         .iter()
-        .map(|c| (c.tb_ledger as u32, c))
+        .map(|c| (c.id as u32, c))
         .collect::<HashMap<_, _>>();
 
     // println!(
@@ -473,7 +473,7 @@ pub async fn query_account_balances(
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
         .iter()
-        .map(|c| (c.tb_ledger as u32, c))
+        .map(|c| (c.id as u32, c))
         .collect::<HashMap<_, _>>();
 
     let mut balances: Vec<responses::Balance> = Vec::new();
@@ -604,7 +604,7 @@ pub async fn query_account_income_statement(
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
         .iter()
-        .map(|c| (c.tb_ledger as u32, c))
+        .map(|c| (c.id as u32, c))
         .collect::<HashMap<_, _>>();
 
     let dates: Vec<SystemTime> = body

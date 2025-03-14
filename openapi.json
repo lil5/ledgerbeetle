@@ -6,7 +6,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/mutate/add": {
@@ -641,14 +641,15 @@
             "description": "account name"
           },
           "t": {
-            "type": "string"
+            "type": "string",
+            "description": "tigerbeetle account id in hexadecimal"
           }
         }
       },
       "MigrateCommodity": {
         "type": "object",
         "required": [
-          "tbLedger",
+          "id",
           "unit",
           "decimalPlace"
         ],
@@ -658,7 +659,7 @@
             "format": "int32",
             "description": "location of decimal point"
           },
-          "tbLedger": {
+          "id": {
             "type": "integer",
             "format": "int32",
             "description": "tigerbeetle ledger number"
