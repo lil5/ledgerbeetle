@@ -1,11 +1,11 @@
 meta {
-  name: add prepare
+  name: q add prepare
   type: http
-  seq: 10
+  seq: 6
 }
 
 post {
-  url: {{base}}/add/prepare
+  url: {{base}}/query/prepare-add
   body: json
   auth: none
 }
@@ -16,11 +16,11 @@ body:json {
     "filterTransactions": [
       {
         "code": 100,
-        "commodityUnit": "TEST",
+        "commodityUnit": "$",
         "relatedId": "{{relatedId}}",
         "debitAccount": "l:test:credit",
-        "creditAccountsFilter": ["l:test:1741348061058:debit", "l:test:**:debit"],
-        "amount": 70000
+        "creditAccountsFilter": ["l:test:1741348061058:debit", "a:**"],
+        "amount": 7
       }
     ]
   }

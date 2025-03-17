@@ -1,11 +1,11 @@
 meta {
-  name: account income statements
+  name: q account income statements
   type: http
   seq: 8
 }
 
 post {
-  url: {{base}}/accountincomestatements/{{account}}
+  url: {{base}}/query/account-income-statements
   body: none
   auth: none
 }
@@ -17,8 +17,12 @@ vars:pre-request {
 
 script:pre-request {
   const dates = bru.getRequestVar("dates").split(",").map(d=>parseInt(d));
+  const accounts_glob = bru.getRequestVar("account");
+  
+  
   req.setBody(JSON.stringify({
     "dates": dates,
+    "accounts_glob": accounts_glob,
   }));
   req.setHeader("Content-Type", "application/json");
 }

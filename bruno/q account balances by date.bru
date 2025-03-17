@@ -1,0 +1,23 @@
+meta {
+  name: q account balances by date
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base}}/query/account-balances
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "accounts_glob": "{{account}}",
+    "date": 1742568867511
+  }
+}
+
+vars:pre-request {
+  account: assets:bank|revenues:work
+  date: 1741534763083
+}
