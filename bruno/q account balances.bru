@@ -1,0 +1,21 @@
+meta {
+  name: q account balances
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base}}/query/account-balances
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "accounts_glob": "{{account}}"
+  }
+}
+
+vars:pre-request {
+  account: a:bank|r:work
+}

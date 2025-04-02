@@ -1,0 +1,23 @@
+meta {
+  name: q acount transactions
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base}}/query/account-transactions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "accounts_glob": "{{account}}",
+    "date_newest": 1742568867511,
+    "date_oldest": 1742568867511
+  }
+}
+
+vars:pre-request {
+  account: a:bank
+}
