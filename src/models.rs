@@ -25,16 +25,59 @@ pub struct CommodityInsertResponse {
     pub id: i32,
 }
 
+#[derive(Selectable, Queryable)]
+#[diesel(table_name = crate::schema::commodities)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct CommodityQueryIdUnit {
+    pub id: i32,
+    pub unit: String,
+}
+
 pub async fn insert_commodities(
     conn: &Object,
     new_commodities: Vec<responses::MigrateCommodity>,
 ) -> http_err::HttpResult<Vec<CommodityInsertResponse>> {
     use crate::schema::commodities::dsl::*;
-    let commodities_id_filter: Vec<i32> = new_commodities.iter().map(|c| c.id).collect();
+
+    // Find commodities that already exist and if the ledger id and unit are equal, ignore from insertion script.
+    let commodities_id_filter: Vec<i32> = new_commodities
+        .clone()
+        .into_iter()
+        .map(|c| c.id.to_owned())
+        .collect();
+    let commodities_id_filter_clone = commodities_id_filter.clone();
+    let new_commodities = {
+        let old_commodities: Vec<CommodityQueryIdUnit> = conn
+            .interact(move |conn| {
+                commodities
+                    .select(CommodityQueryIdUnit::as_select())
+                    .filter(id.eq_any(commodities_id_filter_clone))
+                    .get_results::<CommodityQueryIdUnit>(conn)
+                    .map_err(http_err::internal_error)
+            })
+            .await
+            .map_err(http_err::internal_error)??;
+        new_commodities
+            .iter()
+            .filter_map(|c| {
+                let found_existing = old_commodities.iter().find(|old_c| old_c.id == c.id);
+                match found_existing {
+                    Some(found) => {
+                        if found.unit != c.unit {
+                            Some(Err(http_err::bad_error(ValidationError::new("invalid "))))
+                        } else {
+                            None
+                        }
+                    }
+                    None => Some(Ok(c.clone())),
+                }
+            })
+            .collect::<http_err::HttpResult<Vec<responses::MigrateCommodity>>>()
+    }?;
 
     conn.interact(move |conn| {
         diesel::insert_into(commodities)
-            .values(&new_commodities)
+            .values(new_commodities)
             .on_conflict_do_nothing()
             .execute(conn)
             .map_err(http_err::internal_error)
