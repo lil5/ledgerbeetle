@@ -12,20 +12,22 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
   tb:
-    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.28
+    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.34
     volumes:
       - tb_data:/data
     ports:
-      - 127.0.0.1:3001:3001
+      - 127.0.0.1:3000:3000
     security_opt:
       - seccomp:unconfined
+    cap_add:
+      - IPC_LOCK 
     healthcheck:
-      test: "netstat -an | grep 3001 > /dev/null; if [ 0 != $? ]; then exit 1; fi;"
+      test: "netstat -an | grep 3000 > /dev/null; if [ 0 != $? ]; then exit 1; fi;"
       interval: 30s
       timeout: 10s
       retries: 5
     # command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
-    command: start --addresses=0.0.0.0:3001 /data/0_0.tigerbeetle
+    command: start --addresses=0.0.0.0:3000 /data/0_0.tigerbeetle
 
 volumes:
   app_registry:

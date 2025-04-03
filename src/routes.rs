@@ -3,7 +3,7 @@ use axum::body::Body;
 use axum::http::StatusCode;
 use axum::response::Response;
 use axum::{extract::State, Json};
-// use axum_macros::debug_handler;
+use axum_macros::debug_handler;
 use itertools::Itertools as _;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -145,20 +145,93 @@ pub async fn mutate_add(
         tranfers.push(tranfer);
     }
 
-    state
-        .tb
-        .read()
-        .await
-        .create_transfers(tranfers)
-        .await
-        .map_err(|e: tb::core::error::CreateTransfersError| {
+    state.tb.create_transfers(tranfers).await.map_err(
+        |e: tb::core::error::CreateTransfersError| {
             http_err::internal_error(format!(
                 "error on adding transfers to tigerbeetle: {}",
                 tb_utils::create_transfers_error_name(e)
             ))
-        })?;
+        },
+    )?;
 
     Ok(Json(transfer_ids))
+}
+
+// #[debug_handler]
+#[utoipa::path(post, path = "/query/export-hledger", responses(
+    (status = 200, description = "Returns hledger export", body=String),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
+pub async fn query_export_hledger(
+    state: State<AppState>,
+    json: Json<QueryTransactionsBody>,
+) -> Result<String, http_err::HttpErr> {
+    println!("testing");
+    let res_json = query_account_transactions(state, json).await?;
+
+    let res_hledger_arr = res_json
+        .iter()
+        .map(|item| item.to_hledger_string())
+        .collect::<Result<Vec<String>, ValidationError>>()
+        .map_err(http_err::internal_error)?;
+    let res_hledger = res_hledger_arr.iter().join("\n");
+    Ok(res_hledger)
+}
+
+// #[debug_handler]
+#[utoipa::path(post, path = "/query/export-csv", responses(
+    (status = 200, description = "Returns csv export", body=String),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
+pub async fn query_export_csv(
+    state: State<AppState>,
+    json: Json<QueryTransactionsBody>,
+) -> Result<String, http_err::HttpErr> {
+    println!("testing");
+    let res_json = query_account_transactions(state, json).await?;
+
+    let res_hledger_arr = res_json
+        .iter()
+        .map(|item| item.to_csv())
+        .collect::<Result<Vec<String>, ValidationError>>()
+        .map_err(http_err::internal_error)?;
+    let res_hledger = res_hledger_arr.iter().join("\n");
+    let mut res_header = String::from(responses::Transaction::csv_header());
+    res_header.push_str("\n");
+    res_header.push_str(res_hledger.as_str());
+    Ok(res_header)
+}
+
+#[debug_handler]
+#[utoipa::path(put, path = "/mutate/import-csv", responses(
+    (status = 200, description = "Returns status 200 when import is complete"),
+    (status = 400, description = "Bad request error occurred", body = String),
+    (status = 500, description = "Internal server error occurred", body = String),
+))]
+pub async fn mutate_import_csv(
+    state: State<AppState>,
+    body: String,
+) -> Result<String, http_err::HttpErr> {
+    if !state.allow_migrate {
+        return Err(http_err::bad_error(std::io::Error::other(
+            "migrating to ledger is disabled",
+        )));
+    }
+    let add_transactions_arr = body
+        .split("\n")
+        .into_iter()
+        .skip(1)
+        .map(|line| responses::AddTransactions::parse_from_csv_line(String::from(line)))
+        .collect::<Result<Vec<responses::AddTransactions>, ValidationError>>()
+        .map_err(http_err::bad_error)?;
+
+    for add_transactions in add_transactions_arr.iter() {
+        let _ = mutate_add(state.clone(), Json(add_transactions.to_owned())).await?;
+    }
+
+    Ok(String::new())
 }
 
 #[utoipa::path(post, path = "/query/prepare-add", responses(
@@ -206,8 +279,6 @@ pub async fn query_prepare_add_fcfs(
                 .collect();
             let tb_accounts: Vec<tb::core::account::Account> = state
                 .tb
-                .read()
-                .await
                 .lookup_accounts(missing_tb_account_ids)
                 .await
                 .map_err(http_err::internal_error)?;
@@ -323,7 +394,7 @@ pub async fn query_account_transactions(
     let accounts: Vec<Account> = find_accounts_re(&conn, body.accounts_glob).await?;
     // println!(
     //     "accounts found: {}",
-    //     accounts.iter().map(|a| a.id).join(", ")
+    //     accounts.iter().map(|a| a.tb_id.clone()).join(", ")
     // );
     let commodities = list_all_commodities(&conn).await?;
     let commodities = commodities
@@ -351,10 +422,14 @@ pub async fn query_account_transactions(
         let mut is_response_larger_than_tb_max_batch_size = true;
         let mut previous_transfer_timestamp = UNIX_EPOCH
             .checked_add(Duration::from_millis(body.date_newest as u64))
-            .expect("i64 unix nano date max");
+            .ok_or(http_err::internal_error(ValidationError::new(
+                "i64 unix nano date max",
+            )))?;
         let oldest_transfer_timestamp = UNIX_EPOCH
             .checked_add(Duration::from_millis(body.date_oldest as u64))
-            .expect("i64 unix nano date max");
+            .ok_or(http_err::internal_error(ValidationError::new(
+                "i64 unix nano date max",
+            )))?;
         while is_response_larger_than_tb_max_batch_size {
             let filter = tb::core::account::Filter::new(account_tb_id, TB_MAX_BATCH_SIZE)
                 .with_flags(flags)
@@ -362,8 +437,6 @@ pub async fn query_account_transactions(
                 .with_timestamp_min(oldest_transfer_timestamp);
             let transfers_data: Vec<tb::core::Transfer> = state
                 .tb
-                .read()
-                .await
                 .get_account_transfers(Box::new(filter))
                 .await
                 .map_err(http_err::internal_error)?;
@@ -382,7 +455,7 @@ pub async fn query_account_transactions(
                     previous_transfer_timestamp = transfer_data
                         .timestamp()
                         .checked_sub(Duration::from_nanos(1))
-                        .expect("time");
+                        .ok_or(http_err::internal_error(ValidationError::new("time")))?;
                 }
             }
         }
@@ -504,8 +577,6 @@ pub async fn query_account_balances(
             .with_timestamp_max(timestamp_max);
             let tb_account_balance: Vec<tb::account::Balance> = state
                 .tb
-                .read()
-                .await
                 .get_account_balances(Box::new(filter))
                 .await
                 .map_err(http_err::internal_error)?;
@@ -534,8 +605,6 @@ pub async fn query_account_balances(
         //show balance total
         let tb_accounts: Vec<tb::core::account::Account> = state
             .tb
-            .read()
-            .await
             .lookup_accounts(ids)
             .await
             .map_err(http_err::internal_error)?;
@@ -644,8 +713,6 @@ pub async fn query_account_income_statement(
             .with_timestamp_max(*timestamp_max);
             let tb_account_balance: Vec<tb::account::Balance> = state
                 .tb
-                .read()
-                .await
                 .get_account_balances(Box::new(filter))
                 .await
                 .map_err(http_err::internal_error)?;

@@ -4,7 +4,6 @@ use diesel::{prelude::*, result::Error::NotFound};
 
 use std::sync::Arc;
 use tigerbeetle_unofficial as tb;
-use tokio::sync::RwLock;
 use validator::ValidationError;
 
 pub static TB_MAX_BATCH_SIZE: u32 = 8190;
@@ -138,7 +137,7 @@ pub async fn list_all_accounts(conn: &Object) -> Result<Vec<String>, http_err::H
 }
 
 pub async fn find_or_create_account(
-    tb: Arc<RwLock<tb::Client>>,
+    tb: Arc<tb::Client>,
     conn: &Object,
     account_name: String,
     unit: String,
@@ -181,7 +180,7 @@ pub struct NewAccount<'a> {
 }
 async fn create_account(
     conn: &Object,
-    tb: Arc<RwLock<tb::Client>>,
+    tb: Arc<tb::Client>,
     account_name: String,
     unit: String,
 ) -> Result<(Account, Commodities), http_err::HttpErr> {
@@ -229,9 +228,7 @@ async fn create_account(
     )
     .with_flags(flags);
 
-    tb.read()
-        .await
-        .create_accounts(vec![new_tb_account])
+    tb.create_accounts(vec![new_tb_account])
         .await
         .map_err(http_err::internal_error)?;
 

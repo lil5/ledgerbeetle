@@ -1,0 +1,24 @@
+meta {
+  name: m import csv
+  type: http
+  seq: 15
+}
+
+put {
+  url: {{base}}/mutate/import-csv
+  body: text
+  auth: none
+}
+
+body:json {
+  {
+    "accounts_glob": "{{account}}",
+    "date_newest": 1842568867511,
+    "date_oldest": 1642568867511
+  }
+}
+
+body:text {
+  commodity_unit,€,commodity_decimal,0,code,2,full_date,1743634068227,full_date2,1743634055691,related_id,2,transfer_id,195f8b0730390ef7700ca3d39133911,debit_account,a:test2,credit_account,r:all,debit_amount,10,credit_amount,-10
+  commodity_unit,€,commodity_decimal,0,code,1,full_date,1743633656348,full_date2,1743633624679,related_id,1,transfer_id,195f8aa2a1a06d83c90b0f459bf8f2e,debit_account,a:test2,credit_account,r:all,debit_amount,100,credit_amount,-100
+}

@@ -1,11 +1,11 @@
 meta {
-  name: q acount transactions
+  name: q export csv
   type: http
-  seq: 2
+  seq: 14
 }
 
 post {
-  url: {{base}}/query/account-transactions
+  url: {{base}}/query/export-csv
   body: json
   auth: none
 }
@@ -13,11 +13,11 @@ post {
 body:json {
   {
     "accounts_glob": "{{account}}",
-    "date_newest": 1742568867511,
+    "date_newest": 1842568867511,
     "date_oldest": 1642568867511
   }
 }
 
 vars:pre-request {
-  account: a:bank
+  account: a:**
 }
