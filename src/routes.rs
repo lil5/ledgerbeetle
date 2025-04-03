@@ -194,6 +194,7 @@ pub async fn query_export_csv(
 
     let res_hledger_arr = res_json
         .iter()
+        .rev()
         .map(|item| item.to_csv())
         .collect::<Result<Vec<String>, ValidationError>>()
         .map_err(http_err::internal_error)?;
