@@ -53,7 +53,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
   tb:
-    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.28
+    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.32
     volumes:
       - tb_data:/data
     # ports:

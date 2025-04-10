@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use diesel::prelude::Insertable;
 use diesel::Selectable;
 use std::collections::HashMap;
@@ -141,6 +142,57 @@ pub struct AddTransaction {
     pub amount: i64,
 }
 
+impl AddTransactions {
+    pub fn parse_from_csv_line(line: String) -> Result<AddTransactions, ValidationError> {
+        let mut full_date2: i64 = 0;
+        let mut transaction = AddTransaction {
+            commodity_unit: String::new(),
+            code: 0,
+            related_id: String::new(),
+            debit_account: String::new(),
+            credit_account: String::new(),
+            amount: 0,
+        };
+
+        for (i, v) in line.split(",").into_iter().enumerate() {
+            match i {
+                0 => {
+                    transaction.commodity_unit = String::from(v);
+                }
+                2 => {
+                    transaction.code = v
+                        .parse::<i32>()
+                        .map_err(|_| ValidationError::new("invalid full_date2"))?;
+                }
+                3 => {
+                    full_date2 = v
+                        .parse::<i64>()
+                        .map_err(|_| ValidationError::new("invalid code"))?;
+                }
+                5 => {
+                    transaction.related_id = String::from(v);
+                }
+                7 => {
+                    transaction.debit_account = String::from(v);
+                }
+                8 => {
+                    transaction.credit_account = String::from(v);
+                }
+                9 => {
+                    transaction.amount = v
+                        .parse::<i64>()
+                        .map_err(|_| ValidationError::new("invalid debit_amount"))?;
+                }
+                _ => {}
+            };
+        }
+        Ok(AddTransactions {
+            full_date2,
+            transactions: vec![transaction],
+        })
+    }
+}
+
 #[derive(Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AddFilterTransactions {
@@ -226,22 +278,45 @@ impl Transaction {
         })
     }
 
-    // pub fn to_hledger_string(&self) -> String {
-    //     let date = DateTime::<Utc>::from_timestamp(self.full_date, 0).unwrap();
-    //     format!(
-    //         "{} * transfer {} ; code {} related {}\n    {: >12} {: >10} {: <5}\n    {: >12} {: >10} {: <5}\n",
-    //         date.to_rfc3339(),
-    //         self.transfer_id,
-    //         self.code,
-    //         self.related_id,
-    //         self.debit_account,
-    //         self.debit_amount,
-    //         self.commodity_unit,
-    //         self.credit_account,
-    //         self.credit_amount,
-    //         self.commodity_unit,
-    //     )
-    // }
+    pub fn csv_header() -> &'static str {
+        "commodity_unit,commodity_decimal,code,full_date,full_date2,related_id,transfer_id,debit_account,credit_account,debit_amount,credit_amount"
+    }
+    pub fn to_csv(&self) -> Result<String, ValidationError> {
+        Ok(format!(
+            "{},{},{},{},{},{},{},{},{},{},{}",
+            self.commodity_unit,    //  0
+            self.commodity_decimal, //  1
+            self.code,              //  2
+            self.full_date,         //  3
+            self.full_date2,        //  4
+            self.related_id,        //  5
+            self.transfer_id,       //  6
+            self.debit_account,     //  7
+            self.credit_account,    //  8
+            self.debit_amount,      //  9
+            self.credit_amount,     // 10
+        ))
+    }
+    pub fn to_hledger_string(&self) -> Result<String, ValidationError> {
+        let date = DateTime::<Utc>::from_timestamp_millis(self.full_date)
+            .ok_or(ValidationError::new("invalid full_date"))?;
+        Ok(format!(
+            "{} * {} ; related id {}, code {}\n    {: >12} {: >10} {: <5}\n    {: >12} {: >10} {: <5}\n",
+            //line 1
+            date.format("%Y-%m-%d"),
+            self.transfer_id,
+            self.related_id,
+            self.code,
+            //line 2
+            self.debit_account,
+            self.debit_amount,
+            self.commodity_unit,
+            //line 3
+            self.credit_account,
+            self.credit_amount,
+            self.commodity_unit,
+        ))
+    }
 }
 
 #[derive(Default, Debug, Validate, Clone, PartialEq, Serialize, Deserialize, ToSchema)]

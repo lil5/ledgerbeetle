@@ -19,7 +19,6 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use dotenvy::dotenv;
 use regex::Regex;
 use tigerbeetle_unofficial as tb;
-use tokio::sync::RwLock;
 use utoipa::OpenApi;
 
 extern crate clap;
@@ -28,6 +27,9 @@ extern crate clap;
 #[openapi(paths(
     routes::mutate_migrate,
     routes::query_account_names_all,
+    routes::query_export_hledger,
+    routes::query_export_csv,
+    routes::mutate_import_csv,
     routes::mutate_add,
     routes::query_prepare_add_fcfs,
     routes::query_account_transactions,
@@ -45,10 +47,13 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
 static RE_ENV_TRUE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(1|true|True|TRUE)$").expect("invalid regex"));
 
+static RE_ENV_PORT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\d+$").expect("invalid regex"));
+
 #[derive(Clone)]
 pub struct AppState {
     pub pool: Pool,
-    pub tb: Arc<RwLock<tb::Client>>,
+    pub tb: Arc<tb::Client>,
     pub allow_add: bool,
     pub allow_migrate: bool,
 }
@@ -58,11 +63,20 @@ async fn main() {
     // setup dot env
     dotenv().ok();
 
+    let port = std::env::var("PORT")
+        .and_then(|v| {
+            if RE_ENV_PORT.is_match(v.as_str()) {
+                panic!("port must be a number")
+            }
+            Ok(v)
+        })
+        .unwrap_or(String::from("8081"));
+
     let app = router().await;
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
-        .expect("port 3000 must be available");
+        .expect("port must be available");
     axum::serve(listener, app)
         .await
         .expect("error on running axum serve");
@@ -102,9 +116,9 @@ pub async fn router() -> Router {
             .expect("error running migrations");
     }
 
-    let tb = Arc::new(RwLock::new(
+    let tb = Arc::new(
         tb::Client::new(tb_cluster_id, tb_address).expect("Unable to connect to tigerbeetle"),
-    ));
+    );
 
     let app_state = AppState {
         pool,
@@ -120,6 +134,9 @@ pub async fn router() -> Router {
             post(routes::query_account_names_all),
         )
         .route("/mutate/add", put(routes::mutate_add))
+        .route("/query/export-hledger", post(routes::query_export_hledger))
+        .route("/query/export-csv", post(routes::query_export_csv))
+        .route("/mutate/import-csv", put(routes::mutate_import_csv))
         .route("/query/prepare-add", post(routes::query_prepare_add_fcfs))
         .route(
             "/query/account-transactions",
