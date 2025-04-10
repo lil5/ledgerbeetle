@@ -412,7 +412,7 @@ pub async fn query_account_transactions(
 
     let transactions = transfers
         .iter()
-        .sorted_by(|(_, a), (_, b)| Ord::cmp(&b.timestamp(), &a.timestamp()))
+        .sorted_by(|(_, a), (_, b)| Ord::cmp(&a.timestamp(), &b.timestamp()))
         .map(|(_, transfer)| {
             let commodity = commodities
                 .get(&(transfer.ledger()))
