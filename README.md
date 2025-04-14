@@ -4,7 +4,7 @@
 
 ## Screenshots
 
-![screenshot1.png](https://s6.imgcdn.dev/YhRft0.png)
+![screenshot.webp](screenshot.webp)
 
 ## Getting started
 
