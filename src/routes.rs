@@ -194,7 +194,6 @@ pub async fn query_export_csv(
 
     let res_hledger_arr = res_json
         .iter()
-        .rev()
         .map(|item| item.to_csv())
         .collect::<Result<Vec<String>, ValidationError>>()
         .map_err(http_err::internal_error)?;
@@ -486,7 +485,7 @@ pub async fn query_account_transactions(
 
     let transactions = transfers
         .iter()
-        .sorted_by(|(_, a), (_, b)| Ord::cmp(&b.timestamp(), &a.timestamp()))
+        .sorted_by(|(_, a), (_, b)| Ord::cmp(&a.timestamp(), &b.timestamp()))
         .map(|(_, transfer)| {
             let commodity = commodities
                 .get(&(transfer.ledger()))
