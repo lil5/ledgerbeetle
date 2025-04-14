@@ -90,6 +90,36 @@ export type IncomeStatement = {
     commodityUnit: string;
 };
 
+export type MigrateAccount = {
+    /**
+     * tigerbeetle ledger id
+     */
+    c: number;
+    /**
+     * account name
+     */
+    n: string;
+    /**
+     * tigerbeetle account id in hexadecimal
+     */
+    t: string;
+};
+
+export type MigrateCommodity = {
+    /**
+     * location of decimal point
+     */
+    decimalPlace: number;
+    /**
+     * tigerbeetle ledger number
+     */
+    id: number;
+    /**
+     * commodity unit used
+     */
+    unit: string;
+};
+
 export type QueryAccountBalancesBody = {
     accounts_glob: string;
     date?: number | null;
@@ -104,6 +134,11 @@ export type QueryTransactionsBody = {
     accounts_glob: string;
     date_newest: number;
     date_oldest: number;
+};
+
+export type RequestMigrate = {
+    accounts: Array<MigrateAccount>;
+    commodities: Array<MigrateCommodity>;
 };
 
 export type ResponseIncomeStatements = {
@@ -188,6 +223,60 @@ export type MutateAddResponses = {
 };
 
 export type MutateAddResponse = MutateAddResponses[keyof MutateAddResponses];
+
+export type MutateImportCsvData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mutate/import-csv';
+};
+
+export type MutateImportCsvErrors = {
+    /**
+     * Bad request error occurred
+     */
+    400: string;
+    /**
+     * Internal server error occurred
+     */
+    500: string;
+};
+
+export type MutateImportCsvError = MutateImportCsvErrors[keyof MutateImportCsvErrors];
+
+export type MutateImportCsvResponses = {
+    /**
+     * Returns status 200 when import is complete
+     */
+    200: unknown;
+};
+
+export type MutateMigrateData = {
+    body: RequestMigrate;
+    path?: never;
+    query?: never;
+    url: '/mutate/migrate';
+};
+
+export type MutateMigrateErrors = {
+    /**
+     * Bad request error occurred
+     */
+    400: string;
+    /**
+     * Internal server error occurred
+     */
+    500: string;
+};
+
+export type MutateMigrateError = MutateMigrateErrors[keyof MutateMigrateErrors];
+
+export type MutateMigrateResponses = {
+    /**
+     * Returns status 200 when migration is complete
+     */
+    200: unknown;
+};
 
 export type GetOpenapiData = {
     body?: never;
@@ -358,6 +447,64 @@ export type QueryCommoditiesAllResponses = {
 };
 
 export type QueryCommoditiesAllResponse = QueryCommoditiesAllResponses[keyof QueryCommoditiesAllResponses];
+
+export type QueryExportCsvData = {
+    body: QueryTransactionsBody;
+    path?: never;
+    query?: never;
+    url: '/query/export-csv';
+};
+
+export type QueryExportCsvErrors = {
+    /**
+     * Bad request error occurred
+     */
+    400: string;
+    /**
+     * Internal server error occurred
+     */
+    500: string;
+};
+
+export type QueryExportCsvError = QueryExportCsvErrors[keyof QueryExportCsvErrors];
+
+export type QueryExportCsvResponses = {
+    /**
+     * Returns csv export
+     */
+    200: string;
+};
+
+export type QueryExportCsvResponse = QueryExportCsvResponses[keyof QueryExportCsvResponses];
+
+export type QueryExportHledgerData = {
+    body: QueryTransactionsBody;
+    path?: never;
+    query?: never;
+    url: '/query/export-hledger';
+};
+
+export type QueryExportHledgerErrors = {
+    /**
+     * Bad request error occurred
+     */
+    400: string;
+    /**
+     * Internal server error occurred
+     */
+    500: string;
+};
+
+export type QueryExportHledgerError = QueryExportHledgerErrors[keyof QueryExportHledgerErrors];
+
+export type QueryExportHledgerResponses = {
+    /**
+     * Returns hledger export
+     */
+    200: string;
+};
+
+export type QueryExportHledgerResponse = QueryExportHledgerResponses[keyof QueryExportHledgerResponses];
 
 export type QueryPrepareAddFcfsData = {
     body: AddFilterTransactions;
