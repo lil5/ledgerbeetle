@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -11,7 +11,6 @@ import {
   Input,
   Listbox,
   ListboxItem,
-  Pagination,
   Spinner,
   Table,
   TableBody,
@@ -22,10 +21,18 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { now } from "@internationalized/date";
+import Spreadsheet, {
+  CellBase,
+  createFormulaParser,
+  Matrix,
+} from "react-spreadsheet";
+//@ts-ignore
 import dayjs from "dayjs";
 import { useDebounceValue } from "usehooks-ts";
 import { InfoIcon } from "lucide-react";
 
+//@ts-ignore
+import { customFormulaParserFunctions } from "@/spreadsheetFormula";
 import { useAccountNames } from "@/api/accountnames";
 import DefaultLayout from "@/layouts/default";
 import { useAccountTransactions } from "@/api/accounttransactions";
@@ -33,6 +40,11 @@ import { useAccountBalances } from "@/api/accountbalances";
 import useStoreHook from "@/stores/hook";
 import { selectedAccountsStore } from "@/stores/selected-accounts-store";
 import Numberify from "@/components/numberify";
+
+const customCreateFormulaParser = (data: Matrix<CellBase>) =>
+  createFormulaParser(data, {
+    functions: customFormulaParserFunctions,
+  });
 
 export default function IndexPage() {
   const queryAccountNames = useAccountNames();
@@ -241,101 +253,125 @@ function TransactionsTable(props: { selectedAccounts: string }) {
     date_oldest,
   );
 
-  const columns = [
-    { key: "date", label: "Date" },
-    { key: "immutable_meta", label: "Immutable Metadata" },
-    { key: "accounts", label: "Accounts In/out" },
-    { key: "amount", label: "Amount" },
+  const columnLabels = [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
   ];
+  const [rowLabels, setRowLabels] = useState<string[]>(() =>
+    [...Array(30).keys()].map((v) => String(v + 1)),
+  );
+  const [data, setData] = useState<Matrix<CellBase<any>>>([
+    [{ value: "Vanilla" }, { value: "Chocolate" }],
+    [{ value: "Strawberry" }, { value: "Cookies" }],
+  ]);
 
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 20;
+  useEffect(() => {
+    let units: string[] = [];
+    const arr: typeof data = [
+      [
+        { value: "TransferID", readOnly: true },
+        { value: "Created", readOnly: true },
+        { value: "DebitAccount", readOnly: true },
+        { value: "CreditAccount", readOnly: true },
+        { value: "DebitAmount", readOnly: true },
+        { value: "CreditAmount", readOnly: true },
+        { value: "Unit", readOnly: true },
+        { value: "Code", readOnly: true },
+        { value: "DataRelatedID", readOnly: true },
+        { value: "DataDate", readOnly: true },
+      ],
+    ];
 
-  const { paginatedItems, pages } = useMemo(() => {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
+    for (const item of items) {
+      if (!units.includes(item.commodityUnit)) {
+        units.push(item.commodityUnit);
+      }
+      arr.push([
+        { value: item.transferId, readOnly: true },
+        { value: dayjs(item.fullDate).toISOString(), readOnly: true },
+        { value: item.debitAccount, readOnly: true },
+        { value: item.creditAccount, readOnly: true },
+        { value: item.debitAmount, readOnly: true },
+        { value: item.creditAmount, readOnly: true },
+        { value: item.commodityUnit, readOnly: true },
+        { value: item.code, readOnly: true },
+        { value: item.relatedId, readOnly: true },
+        { value: dayjs(item.fullDate2).toISOString(), readOnly: true },
+      ]);
+    }
+    if (items.length) {
+      for (let i = 0; i < units.length; i++) {
+        const unit = units[i];
+        const itemsMaxIndex = items.length + 1;
 
-    const paginatedItems = items?.slice(start, end) || [];
-    const pages = Math.ceil((items?.length || 0) / rowsPerPage);
-
-    return { paginatedItems, pages };
-  }, [page, items]);
-
+        arr.push([
+          { value: i == 0 ? "Totals" : "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          {
+            value: `=SUMIF(G2:G${itemsMaxIndex}, "${unit}", E2:E${itemsMaxIndex})`,
+          },
+          {
+            value: `=SUMIF(G2:G${itemsMaxIndex}, "${unit}", F2:F${itemsMaxIndex})`,
+          },
+          { value: unit },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+        ]);
+      }
+    }
+    while (arr.length < items.length + 30) {
+      arr.push([]);
+    }
+    setData(arr);
+    setRowLabels([...Array(arr.length).keys()].map((v) => String(v + 1)));
+  }, [items]);
   if (isLoading) return <Spinner />;
 
   return (
-    <Table
-      isStriped
-      aria-label="Example table with dynamic content"
-      bottomContent={
-        <div className="flex flex-col gap-2 items-center">
-          <div className={"".concat(pages > 1 ? "" : " hidden")}>
-            <Pagination
-              isCompact
-              showControls
-              showShadow
-              color="secondary"
-              page={page}
-              total={pages}
-              onChange={(page) => setPage(page)}
-            />
-          </div>
-          <DateRangePicker
-            className="max-w-md"
-            label="Transactions between"
-            value={betweenDates}
-            onChange={setBetweenDates as any}
-          />
-        </div>
-      }
-    >
-      <TableHeader columns={columns}>
-        {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
-      </TableHeader>
-      <TableBody items={paginatedItems}>
-        {(item) => (
-          <TableRow key={item.transferId}>
-            <TableCell>
-              <dl className="inline-grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
-                <dt>Created timestamp:</dt>
-                <dd title={"unix milli: " + item.fullDate.toString()}>
-                  {dayjs(item.fullDate).toISOString()}
-                </dd>
-                <dt>Custom timestamp:</dt>
-                <dd title={"unix milli: " + item.fullDate2.toString()}>
-                  {dayjs(item.fullDate2).toISOString()}
-                </dd>
-              </dl>
-            </TableCell>
-            <TableCell>
-              <dl className="inline-grid [&_dt]:col-start-1 [&_dt]:col-span-2 [&_dd]:col-start-3 [&_dd]:col-span-4 [&_dd]:font-mono text-right text-xs gap-1">
-                <dt>Transfer ID:</dt>
-                <dd>{item.transferId}</dd>
-                <dt>Related ID:</dt>
-                <dd>{item.relatedId}</dd>
-                <dt>Code:</dt>
-                <dd>{item.code}</dd>
-              </dl>
-            </TableCell>
-            <TableCell>
-              <ol>
-                <li>{item.debitAccount}</li>
-                <li>{item.creditAccount}</li>
-              </ol>
-            </TableCell>
-            <TableCell>
-              <ol className="text-right font-mono">
-                <li className="text-success-700">
-                  <Numberify amount={item.debitAmount} t={item} />
-                </li>
-                <li className="text-danger-700">
-                  <Numberify amount={item.creditAmount} t={item} />
-                </li>
-              </ol>
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 items-center">
+        <DateRangePicker
+          className="max-w-md"
+          label="Transactions between"
+          value={betweenDates}
+          onChange={setBetweenDates as any}
+        />
+      </div>
+
+      <div className="overflow-scroll w-[calc(100vw-1rem)] max-h-[80vh]">
+        <Spreadsheet
+          className="text-sm"
+          columnLabels={columnLabels}
+          createFormulaParser={customCreateFormulaParser}
+          data={data}
+          rowLabels={rowLabels}
+          //@ts-expect-error types are incorrect
+          setData={setData}
+        />
+      </div>
+    </div>
   );
 }
