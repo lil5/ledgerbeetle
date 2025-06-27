@@ -22,12 +22,12 @@ import { fromDate, ZonedDateTime } from "@internationalized/date";
 import { PlusIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import dayjs from "dayjs";
-import { useStore } from "@tanstack/react-store";
+import { useStore } from "@nanostores/react";
 
 import Numberify from "./numberify";
 
 import { useAccountIncomeStatements } from "@/api/accountincomestatements";
-import { selectedAccountsStore } from "@/stores/selected-accounts-store";
+import { $selectedAccountsStore } from "@/stores/selected-accounts-store";
 
 export default function IncomeStatementModal() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -64,7 +64,7 @@ export default function IncomeStatementModal() {
 }
 
 function IncomeStatementForm() {
-  const account_re = useStore(selectedAccountsStore);
+  const account_re = useStore($selectedAccountsStore);
   const elDatesScroll = useRef<HTMLDivElement>(null);
   const [dates, setDates] = useState(() => [
     { key: crypto.randomUUID(), d: dayjs().valueOf() },

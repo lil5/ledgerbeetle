@@ -26,10 +26,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    # Create tigerbeetle file if doesn't exist then start
+    entrypoint: ["/bin/sh", "-c", "if [ ! -f /data/0_0.tigerbeetle ]; then ./tigerbeetle format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle; fi &&  ./tigerbeetle start --addresses=0.0.0.0:3000 /data/0_0.tigerbeetle"]
     # command: format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
-    command: start --addresses=0.0.0.0:3000 /data/0_0.tigerbeetle
+    # command: start --addresses=0.0.0.0:3000 /data/0_0.tigerbeetle
 
 volumes:
   app_registry:
   db_data:
   tb_data:
+
+

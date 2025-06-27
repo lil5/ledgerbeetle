@@ -1,16 +1,18 @@
-FROM oven/bun AS bun
+FROM node:bookworm-slim AS node
+
+RUN npm install -g pnpm@latest-10
 
 WORKDIR /app
 
-COPY ./frontend/package.json ./frontend/bun.lock ./
+COPY ./frontend/package.json ./frontend/pnpm-lock.yaml ./
 
-RUN bun install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 COPY ./frontend/ .
 
 ENV VITE_ALLOW_ADD=true
 
-RUN bun run build
+RUN pnpm run build
 
 FROM caddy:2 AS caddy
 
@@ -36,7 +38,7 @@ COPY --from=caddy /usr/bin/caddy /usr/bin/
 
 COPY ./frontend/Caddyfile /etc/caddy/
 
-COPY --from=bun /app/dist/ /srv/
+COPY --from=node /app/dist/ /srv/
 
 EXPOSE 8080
 

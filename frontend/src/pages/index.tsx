@@ -21,35 +21,26 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { now } from "@internationalized/date";
-import Spreadsheet, {
-  CellBase,
-  createFormulaParser,
-  Matrix,
-} from "react-spreadsheet";
+import { CellBase, Matrix, Spreadsheet } from "@lil5/react-spreadsheet";
 //@ts-ignore
 import dayjs from "dayjs";
+import * as XLSX from "xlsx";
 import { useDebounceValue } from "usehooks-ts";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, LucideDownload } from "lucide-react";
+import { useStore } from "@nanostores/react";
 
-//@ts-ignore
-import { customFormulaParserFunctions } from "@/spreadsheetFormula";
 import { useAccountNames } from "@/api/accountnames";
 import DefaultLayout from "@/layouts/default";
 import { useAccountTransactions } from "@/api/accounttransactions";
 import { useAccountBalances } from "@/api/accountbalances";
-import useStoreHook from "@/stores/hook";
-import { selectedAccountsStore } from "@/stores/selected-accounts-store";
+import { $selectedAccountsStore } from "@/stores/selected-accounts-store";
 import Numberify from "@/components/numberify";
-
-const customCreateFormulaParser = (data: Matrix<CellBase>) =>
-  createFormulaParser(data, {
-    functions: customFormulaParserFunctions,
-  });
 
 export default function IndexPage() {
   const queryAccountNames = useAccountNames();
   const [isOpenTooltip, setIsOpenTooltip] = useState(false);
-  const [search, setSearch] = useStoreHook(selectedAccountsStore);
+  const search = useStore($selectedAccountsStore);
+  const setSearch = (s: typeof search) => $selectedAccountsStore.set(s);
   const [searchDebounce] = useDebounceValue(search, 1300, { trailing: true });
   const [selectedAccountNames, setSelectedAccountNames] = useState(
     new Set([] as string[]),
@@ -60,10 +51,11 @@ export default function IndexPage() {
     return queryAccountNames.data.map((text) => ({ text }));
   }, [queryAccountNames]);
 
-  const _setSelectedAccountNames = (s: Set<string>) => {
-    setSelectedAccountNames(s);
+  const _setSelectedAccountNames = (s: Set<string> | "all") => {
+    if (s === "all") s = new Set(queryAccountNames.data || []);
+    setSelectedAccountNames(s as Set<string>);
 
-    setSearch(() => [...s].map((s) => s + "**").join("|"));
+    setSearch([...s].map((s) => s + "**").join("|"));
   };
 
   return (
@@ -133,7 +125,7 @@ export default function IndexPage() {
                 </Tooltip>
               }
               value={search}
-              onValueChange={(s) => setSearch(() => s)}
+              onValueChange={setSearch}
             />
             <h1 className="mx-2 text-sm text-default-500 pt-1">
               Select one or many accounts:
@@ -205,7 +197,7 @@ function BalanceTable(props: { selectedAccounts: string }) {
         {showFilter ? (
           <DatePicker
             color="secondary"
-            value={filterDate}
+            value={filterDate as any}
             onChange={setFilterDate as any}
           />
         ) : null}
@@ -253,37 +245,7 @@ function TransactionsTable(props: { selectedAccounts: string }) {
     date_oldest,
   );
 
-  const columnLabels = [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "L",
-    "M",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-    "Y",
-    "Z",
-  ];
-  const [rowLabels, setRowLabels] = useState<string[]>(() =>
-    [...Array(30).keys()].map((v) => String(v + 1)),
-  );
-  const [data, setData] = useState<Matrix<CellBase<any>>>([
-    [{ value: "Vanilla" }, { value: "Chocolate" }],
-    [{ value: "Strawberry" }, { value: "Cookies" }],
-  ]);
+  const [data, setData] = useState<Matrix<CellBase<any>>>([]);
 
   useEffect(() => {
     let units: string[] = [];
@@ -301,6 +263,7 @@ function TransactionsTable(props: { selectedAccounts: string }) {
         { value: "DataDate", readOnly: true },
       ],
     ];
+    const colSize = arr[0].length;
 
     for (const item of items) {
       if (!units.includes(item.commodityUnit)) {
@@ -318,58 +281,149 @@ function TransactionsTable(props: { selectedAccounts: string }) {
         { value: item.relatedId, readOnly: true },
         { value: dayjs(item.fullDate2).toISOString(), readOnly: true },
       ]);
+      if (arr[arr.length - 1].length != colSize) {
+        console.error(
+          "Added invalid amount of columns",
+          arr[arr.length - 1].length,
+          colSize,
+        );
+      }
     }
     if (items.length) {
       for (let i = 0; i < units.length; i++) {
+        const isFirst = i === 0;
         const unit = units[i];
         const itemsMaxIndex = items.length + 1;
 
+        // prettier-ignore
+        // eslint-disable-next-line prettier/prettier
         arr.push([
-          { value: i == 0 ? "Totals" : "" },
           { value: "" },
           { value: "" },
           { value: "" },
-          {
-            value: `=SUMIF(G2:G${itemsMaxIndex}, "${unit}", E2:E${itemsMaxIndex})`,
-          },
-          {
-            value: `=SUMIF(G2:G${itemsMaxIndex}, "${unit}", F2:F${itemsMaxIndex})`,
-          },
+          { value: isFirst ? "Totals:" : "" },
+          { value: `=SUMIF(G2:G${itemsMaxIndex}, "${unit}", E2:E${itemsMaxIndex})` },
+          { value: `=SUMIF(G2:G${itemsMaxIndex}, "${unit}", F2:F${itemsMaxIndex})` },
           { value: unit },
           { value: "" },
           { value: "" },
           { value: "" },
         ]);
+        if (arr[arr.length - 1].length != colSize) {
+          console.error(
+            "Added invalid amount of columns",
+            arr[arr.length - 1].length,
+            colSize,
+          );
+        }
+      }
+      arr.push(
+        [
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+        ],
+        [
+          { value: "Transactions between:" },
+          { value: betweenDates.start.toDate().toISOString() },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+        ],
+        [
+          { value: "" },
+          { value: betweenDates.end.toDate().toISOString() },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+          { value: "" },
+        ],
+      );
+    }
+    for (let i = 0; i < 20; i++) {
+      arr.push([
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+        { value: "" },
+      ]);
+      if (arr[arr.length - 1].length != colSize) {
+        console.error(
+          "Added invalid amount of columns",
+          arr[arr.length - 1].length,
+          colSize,
+        );
       }
     }
-    while (arr.length < items.length + 30) {
-      arr.push([]);
-    }
     setData(arr);
-    setRowLabels([...Array(arr.length).keys()].map((v) => String(v + 1)));
   }, [items]);
+
+  function onClickExport() {
+    const sheet = XLSX.utils.aoa_to_sheet(
+      data.map((row) =>
+        row.map((cell) => {
+          const v = cell!.value;
+
+          if (String(v).startsWith("=")) {
+            return { t: "n", f: v.slice(1) };
+          }
+
+          return cell!.value;
+        }),
+      ),
+    );
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, sheet, "Sheet1", true);
+    XLSX.writeFile(wb, "export.xlsx");
+  }
+
+  // const spreadsheetProps = useSpreadsheetTableProps(data, setData);
+
   if (isLoading) return <Spinner />;
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-2 items-center">
+      <div className="flex flex-col md:flex-row gap-2 justify-center items-center">
         <DateRangePicker
           className="max-w-md"
           label="Transactions between"
-          value={betweenDates}
+          value={betweenDates as any}
           onChange={setBetweenDates as any}
         />
+        <Button onPress={onClickExport}>
+          <LucideDownload />
+          Export
+        </Button>
       </div>
 
       <div className="overflow-scroll w-[calc(100vw-1rem)] max-h-[80vh]">
         <Spreadsheet
           className="text-sm"
-          columnLabels={columnLabels}
-          createFormulaParser={customCreateFormulaParser}
           data={data}
-          rowLabels={rowLabels}
-          //@ts-expect-error types are incorrect
-          setData={setData}
+          //  onChange={setData}
         />
       </div>
     </div>

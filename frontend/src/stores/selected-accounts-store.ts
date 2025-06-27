@@ -1,3 +1,3 @@
-import { Store } from "@tanstack/react-store";
+import { atom } from "nanostores";
 
-export const selectedAccountsStore = new Store("");
+export const $selectedAccountsStore = atom("");

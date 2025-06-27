@@ -1,6 +1,3 @@
-default:
-	@grep '^[^#[:space:].].*:' Makefile
-
 dev-docker-start:
 	docker compose -f docker-compose.dev.yml up -d
 dev-docker-stop:
@@ -9,7 +6,7 @@ dev-docker-stop:
 dev-be-start:
 	cargo run
 dev-fe-start:
-	cd frontend; VITE_ALLOW_ADD=true bun run dev
+	cd frontend; VITE_ALLOW_ADD=true pnpm run dev
 
 prod-start:
 	docker compose -f docker-compose.prod.yml up -d
@@ -19,9 +16,9 @@ prod-build:
 	docker compose -f docker-compose.prod.yml build
 
 dev:
-	cd frontend; bun i
-	make dev-docker-start 
-	make dev-be-start & make dev-fe-start & wait
+	cd frontend; pnpm install
+	just dev-docker-start 
+	just dev-be-start & just dev-fe-start & wait
 start: dev
 
 gen-openapi:

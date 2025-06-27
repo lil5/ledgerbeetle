@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.Spreadsheet {
+  --header-background-color: #f5f5f5;
+  --border-color: #e8e8e8;
+}
+
+tr:not([row]) {
+  & > .Spreadsheet__header {
+    position: sticky;
+    top: 0;
+    border-top: 1px;
+  }
+}
